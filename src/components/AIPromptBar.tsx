@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUp, Slash, Sparkles } from "lucide-react";
-
-const RECENT = "Make Davide list dynamic";
+import { ArrowUp, Slash } from "lucide-react";
 
 const SUGGESTIONS = [
   "Show me deals closing this month",
   "Which contacts haven't been emailed in 30 days?",
   "Summarize today's pipeline movement",
-  "Draft a follow-up to Patrick at Stripe",
+  "Draft a follow-up to my biggest open deal",
 ];
 
 export function AIPromptBar() {
@@ -17,11 +15,6 @@ export function AIPromptBar() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <div className="mb-2 flex items-center gap-1.5 text-[12px] text-[var(--muted)]">
-        <Sparkles size={12} />
-        <span>Recent chat ·</span>
-        <span className="font-medium text-[var(--foreground)]">{RECENT}</span>
-      </div>
       <div className="rounded-xl border border-[var(--border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] focus-within:border-[var(--accent)]/40 focus-within:shadow-[0_0_0_3px_rgba(91,95,239,0.08)]">
         <textarea
           value={value}

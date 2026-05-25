@@ -2,11 +2,15 @@ import { TopBar } from "@/components/TopBar";
 import { PageHeader } from "@/components/PageHeader";
 import { ViewToolbar } from "@/components/ViewToolbar";
 import { PipelineBoard } from "@/components/PipelineBoard";
-import { deals } from "@/lib/data";
+import { NewDealButton } from "@/components/NewDealButton";
+import { listCompanies, listDeals, listPeople } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
 
 export default function PipelinePage() {
+  const deals = listDeals();
+  const companies = listCompanies();
+  const people = listPeople();
   const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   const totalValue = open.reduce((sum, d) => sum + d.value, 0);
   const weighted = open.reduce(
@@ -24,11 +28,11 @@ export default function PipelinePage() {
         icon={<TrendingUp size={14} className="text-orange-500" />}
         title="Pipeline"
         count={deals.length}
-        description={`${open.length} open deals · ${formatCurrency(totalValue)} total · ${formatCurrency(weighted)} weighted`}
-        primaryAction="Add deal"
+        description={`${open.length} open · ${formatCurrency(totalValue)} total · ${formatCurrency(weighted)} weighted`}
+        action={<NewDealButton companies={companies} people={people} />}
       />
       <ViewToolbar views={["board", "table"]} activeView="board" />
-      <PipelineBoard deals={deals} />
+      <PipelineBoard initialDeals={deals} companies={companies} people={people} />
     </>
   );
 }

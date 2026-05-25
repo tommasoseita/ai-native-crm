@@ -1,17 +1,17 @@
-import { ChevronDown, Plus, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export function PageHeader({
   icon,
   title,
   count,
   description,
-  primaryAction = "New",
+  action,
 }: {
   icon?: React.ReactNode;
   title: string;
   count?: number;
   description?: string;
-  primaryAction?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="border-b border-[var(--border)] bg-white px-6 pt-5 pb-3">
@@ -41,11 +41,7 @@ export function PageHeader({
             <Sparkles size={12} className="text-[var(--accent)]" />
             <span>Ask AI</span>
           </button>
-          <button className="flex items-center gap-1 rounded-md bg-[var(--foreground)] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-black">
-            <Plus size={12} />
-            <span>{primaryAction}</span>
-            <ChevronDown size={11} className="opacity-70" />
-          </button>
+          {action}
         </div>
       </div>
     </div>

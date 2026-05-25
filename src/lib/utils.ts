@@ -12,7 +12,7 @@ export function formatCurrency(amount: number, currency: "EUR" | "USD" = "EUR") 
   }).format(amount);
 }
 
-export function formatDate(iso?: string) {
+export function formatDate(iso?: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", {
@@ -22,7 +22,7 @@ export function formatDate(iso?: string) {
   });
 }
 
-export function relativeTime(iso?: string, today = new Date()) {
+export function relativeTime(iso?: string | null, today = new Date()) {
   if (!iso) return "Never";
   const d = new Date(iso);
   const diff = Math.round((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));

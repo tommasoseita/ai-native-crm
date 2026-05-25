@@ -1,17 +1,20 @@
+import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { PageHeader } from "@/components/PageHeader";
 import { ViewToolbar } from "@/components/ViewToolbar";
 import { Avatar, CompanyLogo } from "@/components/Avatar";
+import { NewCompanyButton } from "@/components/NewCompanyButton";
 import {
-  companies,
+  listCompanies,
   peopleByCompany,
   dealsByCompany,
-  teamMemberById,
-} from "@/lib/data";
+} from "@/lib/queries";
+import { teamMemberById } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Building, Globe, MoreHorizontal } from "lucide-react";
+import { Building, Globe } from "lucide-react";
 
 export default function CompaniesPage() {
+  const companies = listCompanies();
   return (
     <>
       <TopBar title="Companies" icon={<Building size={14} className="text-blue-500" />} />
@@ -20,7 +23,7 @@ export default function CompaniesPage() {
         title="Companies"
         count={companies.length}
         description="Organizations in your pipeline"
-        primaryAction="Add company"
+        action={<NewCompanyButton />}
       />
       <ViewToolbar views={["table", "board"]} activeView="table" />
       <div className="flex-1 overflow-auto scrollbar-thin bg-white">
@@ -34,12 +37,11 @@ export default function CompaniesPage() {
               <Th>Industry</Th>
               <Th>Size</Th>
               <Th>Location</Th>
-              <Th>People</Th>
+              <Th>Contacts</Th>
               <Th>Open deals</Th>
               <Th>ARR</Th>
               <Th>Owner</Th>
               <Th>Created</Th>
-              <th className="w-8" />
             </tr>
           </thead>
           <tbody>
@@ -62,27 +64,34 @@ export default function CompaniesPage() {
                     />
                   </td>
                   <Td>
-                    <div className="flex items-center gap-2">
-                      <CompanyLogo name={c.name} domain={c.domain} />
+                    <Link
+                      href={`/companies/${c.id}`}
+                      className="flex items-center gap-2 hover:underline"
+                    >
+                      <CompanyLogo name={c.name} domain={c.domain ?? undefined} />
                       <div className="flex flex-col">
                         <span className="font-medium">{c.name}</span>
-                        <span className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
-                          <Globe size={9} />
-                          {c.domain}
-                        </span>
+                        {c.domain && (
+                          <span className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                            <Globe size={9} />
+                            {c.domain}
+                          </span>
+                        )}
                       </div>
-                    </div>
+                    </Link>
                   </Td>
                   <Td>
-                    <span className="rounded-md bg-[var(--sidebar-hover)] px-1.5 py-0.5 text-[11.5px] text-[var(--muted-foreground)]">
-                      {c.industry}
-                    </span>
+                    {c.industry && (
+                      <span className="rounded-md bg-[var(--sidebar-hover)] px-1.5 py-0.5 text-[11.5px] text-[var(--muted-foreground)]">
+                        {c.industry}
+                      </span>
+                    )}
                   </Td>
                   <Td>
-                    <span className="text-[var(--muted-foreground)]">{c.size}</span>
+                    <span className="text-[var(--muted-foreground)]">{c.size ?? "—"}</span>
                   </Td>
                   <Td>
-                    <span className="text-[var(--muted-foreground)]">{c.location}</span>
+                    <span className="text-[var(--muted-foreground)]">{c.location ?? "—"}</span>
                   </Td>
                   <Td>
                     <span className="tabular-nums">{peopleCount}</span>
@@ -119,11 +128,6 @@ export default function CompaniesPage() {
                       {formatDate(c.createdAt)}
                     </span>
                   </Td>
-                  <td className="px-2">
-                    <button className="rounded p-1 opacity-0 hover:bg-white group-hover:opacity-100">
-                      <MoreHorizontal size={13} className="text-[var(--muted)]" />
-                    </button>
-                  </td>
                 </tr>
               );
             })}

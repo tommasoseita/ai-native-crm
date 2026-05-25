@@ -1,23 +1,29 @@
+import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { PageHeader } from "@/components/PageHeader";
 import { ViewToolbar } from "@/components/ViewToolbar";
 import { Avatar, CompanyLogo } from "@/components/Avatar";
-import { people, companyById, teamMemberById } from "@/lib/data";
+import { NewPersonButton } from "@/components/NewPersonButton";
+import { listPeople, listCompanies, getCompany } from "@/lib/queries";
+import { teamMemberById } from "@/lib/types";
 import { relativeTime } from "@/lib/utils";
-import { User, Mail, MoreHorizontal } from "lucide-react";
+import { User, Mail } from "lucide-react";
 
 const TODAY = new Date("2026-05-25");
 
 export default function PeoplePage() {
+  const people = listPeople();
+  const companies = listCompanies();
+
   return (
     <>
-      <TopBar title="People" icon={<User size={14} className="text-sky-500" />} />
+      <TopBar title="Contacts" icon={<User size={14} className="text-sky-500" />} />
       <PageHeader
         icon={<User size={14} className="text-sky-500" />}
-        title="People"
+        title="Contacts"
         count={people.length}
         description="All contacts across your workspace"
-        primaryAction="Add person"
+        action={<NewPersonButton companies={companies} />}
       />
       <ViewToolbar views={["table", "board"]} activeView="table" />
       <div className="flex-1 overflow-auto scrollbar-thin bg-white">
@@ -33,12 +39,11 @@ export default function PeoplePage() {
               <Th>Email</Th>
               <Th>Last contacted</Th>
               <Th>Owner</Th>
-              <th className="w-8" />
             </tr>
           </thead>
           <tbody>
             {people.map((p) => {
-              const company = companyById(p.companyId);
+              const company = p.companyId ? getCompany(p.companyId) : undefined;
               const owner = teamMemberById(p.ownerId);
               return (
                 <tr
@@ -52,22 +57,30 @@ export default function PeoplePage() {
                     />
                   </td>
                   <Td>
-                    <div className="flex items-center gap-2">
+                    <Link
+                      href={`/people/${p.id}`}
+                      className="flex items-center gap-2 hover:underline"
+                    >
                       <Avatar name={`${p.firstName} ${p.lastName}`} />
                       <span className="font-medium">
                         {p.firstName} {p.lastName}
                       </span>
-                    </div>
+                    </Link>
                   </Td>
                   <Td>
-                    <span className="text-[var(--muted-foreground)]">{p.role}</span>
+                    <span className="text-[var(--muted-foreground)]">{p.role ?? "—"}</span>
                   </Td>
                   <Td>
-                    {company && (
-                      <div className="flex items-center gap-2">
-                        <CompanyLogo name={company.name} domain={company.domain} size="xs" />
+                    {company ? (
+                      <Link
+                        href={`/companies/${company.id}`}
+                        className="flex items-center gap-2 hover:underline"
+                      >
+                        <CompanyLogo name={company.name} domain={company.domain ?? undefined} size="xs" />
                         <span>{company.name}</span>
-                      </div>
+                      </Link>
+                    ) : (
+                      <span className="text-[var(--muted)]">—</span>
                     )}
                   </Td>
                   <Td>
@@ -81,7 +94,7 @@ export default function PeoplePage() {
                   </Td>
                   <Td>
                     <span className="text-[var(--muted-foreground)]">
-                      {relativeTime(p.lastContactedAt, TODAY)}
+                      {relativeTime(p.lastContactedAt ?? undefined, TODAY)}
                     </span>
                   </Td>
                   <Td>
@@ -92,11 +105,6 @@ export default function PeoplePage() {
                       </div>
                     )}
                   </Td>
-                  <td className="px-2">
-                    <button className="rounded p-1 opacity-0 hover:bg-white group-hover:opacity-100">
-                      <MoreHorizontal size={13} className="text-[var(--muted)]" />
-                    </button>
-                  </td>
                 </tr>
               );
             })}

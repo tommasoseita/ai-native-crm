@@ -1,16 +1,11 @@
+import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { AIPromptBar } from "@/components/AIPromptBar";
-import {
-  Home as HomeIcon,
-  Calendar,
-  CheckSquare,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Plus,
-} from "lucide-react";
-import { deals, people, companies } from "@/lib/data";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { CompanyLogo, Avatar } from "@/components/Avatar";
+import { Home as HomeIcon } from "lucide-react";
+import { listCompanies, listDeals, listPeople, getCompany } from "@/lib/queries";
+import { formatCurrency, formatDate, relativeTime } from "@/lib/utils";
+import { STAGE_LABELS, teamMemberById } from "@/lib/types";
 
 const TODAY = new Date("2026-05-25T14:30:00");
 
@@ -22,13 +17,23 @@ function greeting() {
 }
 
 export default function HomePage() {
-  const myDeals = deals
-    .filter((d) => d.ownerId === "u1" && d.stage !== "won" && d.stage !== "lost")
-    .slice(0, 4);
+  const allDeals = listDeals();
+  const allPeople = listPeople();
+  const allCompanies = listCompanies();
 
-  const pipelineValue = deals
-    .filter((d) => d.stage !== "lost")
-    .reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
+  const openDeals = allDeals.filter((d) => d.stage !== "won" && d.stage !== "lost");
+  const weighted = openDeals.reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
+  const recentDeals = openDeals
+    .slice()
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  const recentlyContacted = allPeople
+    .filter((p) => p.lastContactedAt)
+    .sort((a, b) =>
+      (b.lastContactedAt || "").localeCompare(a.lastContactedAt || ""),
+    )
+    .slice(0, 5);
 
   return (
     <>
@@ -42,87 +47,92 @@ export default function HomePage() {
           <AIPromptBar />
 
           <div className="mt-12 grid grid-cols-3 gap-3">
-            <Stat label="Pipeline (weighted)" value={formatCurrency(pipelineValue)} delta="+12%" />
-            <Stat label="People" value={people.length.toString()} delta="+3 this week" />
-            <Stat label="Companies" value={companies.length.toString()} delta="+1 this week" />
+            <Stat label="Pipeline (weighted)" value={formatCurrency(weighted)} />
+            <Stat label="Companies" value={allCompanies.length.toString()} />
+            <Stat label="Contacts" value={allPeople.length.toString()} />
           </div>
 
           <Section
-            title="Meetings"
+            title={`Top open deals · ${openDeals.length}`}
             right={
-              <div className="flex items-center gap-1 text-[12px] text-[var(--muted-foreground)]">
-                <span>Today, May 25</span>
-                <button className="rounded p-0.5 hover:bg-[var(--sidebar-hover)]">
-                  <ChevronLeft size={13} />
-                </button>
-                <button className="rounded p-0.5 hover:bg-[var(--sidebar-hover)]">
-                  <ChevronRight size={13} />
-                </button>
-                <button className="rounded p-0.5 hover:bg-[var(--sidebar-hover)]">
-                  <MoreHorizontal size={13} />
-                </button>
-              </div>
-            }
-          >
-            <div className="rounded-xl border border-dashed border-[var(--border)] bg-white p-8 text-center">
-              <Calendar size={20} className="mx-auto mb-2 text-[var(--muted)]" />
-              <p className="text-[13px] font-medium">Turn meetings into opportunities</p>
-              <p className="mt-0.5 text-[12px] text-[var(--muted-foreground)]">
-                Sync your calendar to get instant meeting context
-              </p>
-              <button className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-white px-3 py-1.5 text-[12px] font-medium hover:bg-[var(--sidebar-hover)]">
-                <span className="flex h-4 w-4 items-center justify-center rounded-sm bg-white">
-                  <span className="text-[10px] font-bold text-blue-500">G</span>
-                </span>
-                Sync Google Account
-              </button>
-            </div>
-          </Section>
-
-          <Section
-            title={`My open deals · ${myDeals.length}`}
-            right={
-              <a href="/pipeline" className="text-[12px] text-[var(--muted-foreground)] hover:underline">
+              <Link
+                href="/pipeline"
+                className="text-[12px] text-[var(--muted-foreground)] hover:underline"
+              >
                 View all
-              </a>
+              </Link>
             }
           >
             <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
-              {myDeals.map((d, i) => (
-                <a
-                  key={d.id}
-                  href="/pipeline"
-                  className={`flex items-center gap-3 px-4 py-2.5 text-[13px] hover:bg-[var(--sidebar-hover)] ${
-                    i !== myDeals.length - 1 ? "border-b border-[var(--border)]" : ""
-                  }`}
-                >
-                  <span className="font-medium truncate">{d.name}</span>
-                  <span className="ml-auto flex items-center gap-3 text-[12px] text-[var(--muted-foreground)]">
-                    <span className="rounded-full bg-[var(--sidebar-hover)] px-2 py-0.5 text-[11px] capitalize">
-                      {d.stage}
+              {recentDeals.map((d, i) => {
+                const company = d.companyId ? getCompany(d.companyId) : undefined;
+                return (
+                  <Link
+                    key={d.id}
+                    href={`/deals/${d.id}`}
+                    className={`flex items-center gap-3 px-4 py-2.5 text-[13px] hover:bg-[var(--sidebar-hover)] ${
+                      i !== recentDeals.length - 1 ? "border-b border-[var(--border)]" : ""
+                    }`}
+                  >
+                    {company && (
+                      <CompanyLogo name={company.name} domain={company.domain ?? undefined} size="xs" />
+                    )}
+                    <span className="font-medium truncate">{d.name}</span>
+                    <span className="ml-auto flex items-center gap-3 text-[12px] text-[var(--muted-foreground)]">
+                      <span className="rounded-full bg-[var(--sidebar-hover)] px-2 py-0.5 text-[11px]">
+                        {STAGE_LABELS[d.stage]}
+                      </span>
+                      <span className="tabular-nums">
+                        {formatCurrency(d.value, d.currency)}
+                      </span>
+                      <span>{formatDate(d.expectedCloseDate)}</span>
                     </span>
-                    <span className="tabular-nums">{formatCurrency(d.value, d.currency)}</span>
-                    <span>{formatDate(d.expectedCloseDate)}</span>
-                  </span>
-                </a>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </Section>
 
           <Section
-            title="Tasks 0"
-            right={<span className="text-[12px] text-[var(--muted-foreground)]">View all</span>}
+            title="Recently contacted"
+            right={
+              <Link
+                href="/people"
+                className="text-[12px] text-[var(--muted-foreground)] hover:underline"
+              >
+                View all
+              </Link>
+            }
           >
-            <div className="rounded-xl border border-dashed border-[var(--border)] bg-white p-8 text-center">
-              <CheckSquare size={20} className="mx-auto mb-2 text-[var(--muted)]" />
-              <p className="text-[13px] font-medium">Stay on top of work</p>
-              <p className="mt-0.5 text-[12px] text-[var(--muted-foreground)]">
-                Create tasks for yourself or your team to track next steps
-              </p>
-              <button className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-white px-3 py-1.5 text-[12px] font-medium hover:bg-[var(--sidebar-hover)]">
-                <Plus size={12} />
-                New task
-              </button>
+            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+              {recentlyContacted.map((p, i) => {
+                const company = p.companyId ? getCompany(p.companyId) : undefined;
+                const owner = teamMemberById(p.ownerId);
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/people/${p.id}`}
+                    className={`flex items-center gap-3 px-4 py-2.5 text-[13px] hover:bg-[var(--sidebar-hover)] ${
+                      i !== recentlyContacted.length - 1
+                        ? "border-b border-[var(--border)]"
+                        : ""
+                    }`}
+                  >
+                    <Avatar name={`${p.firstName} ${p.lastName}`} />
+                    <span className="font-medium">
+                      {p.firstName} {p.lastName}
+                    </span>
+                    {p.role && (
+                      <span className="text-[12px] text-[var(--muted)]">· {p.role}</span>
+                    )}
+                    <span className="ml-auto flex items-center gap-3 text-[12px] text-[var(--muted-foreground)]">
+                      {company && <span>{company.name}</span>}
+                      <span>{relativeTime(p.lastContactedAt, TODAY)}</span>
+                      {owner && <Avatar name={owner.name} color={owner.color} size="xs" />}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </Section>
         </div>
@@ -131,20 +141,11 @@ export default function HomePage() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  delta,
-}: {
-  label: string;
-  value: string;
-  delta?: string;
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
       <div className="text-[11px] uppercase tracking-wider text-[var(--muted)]">{label}</div>
       <div className="mt-1 text-[18px] font-semibold tabular-nums">{value}</div>
-      {delta && <div className="mt-0.5 text-[11px] text-emerald-600">{delta}</div>}
     </div>
   );
 }
