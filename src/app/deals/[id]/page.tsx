@@ -24,14 +24,16 @@ export default async function DealDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const deal = getDeal(id);
+  const deal = await getDeal(id);
   if (!deal) notFound();
 
-  const company = deal.companyId ? getCompany(deal.companyId) : undefined;
-  const primary = deal.primaryContactId ? getPerson(deal.primaryContactId) : undefined;
-  const associated = contactsForDeal(id);
+  const [company, primary, associated, allPeople] = await Promise.all([
+    deal.companyId ? getCompany(deal.companyId) : Promise.resolve(undefined),
+    deal.primaryContactId ? getPerson(deal.primaryContactId) : Promise.resolve(undefined),
+    contactsForDeal(id),
+    listPeople(),
+  ]);
   const owner = teamMemberById(deal.ownerId);
-  const allPeople = listPeople();
   const weighted = deal.value * (deal.probability / 100);
 
   return (

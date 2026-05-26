@@ -21,17 +21,27 @@ export default async function SequenceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const seq = getSequence(id);
+  const seq = await getSequence(id);
   if (!seq) notFound();
 
-  const steps = listSequenceSteps(id);
-  const enrollments = enrollmentsForSequence(id);
+  const [steps, enrollments] = await Promise.all([
+    listSequenceSteps(id),
+    enrollmentsForSequence(id),
+  ]);
   const owner = teamMemberById(seq.ownerId);
   const byStatus = {
     active: enrollments.filter((e) => e.status === "active"),
     completed: enrollments.filter((e) => e.status === "completed"),
     exited: enrollments.filter((e) => e.status === "exited"),
   };
+
+  const personEntries = await Promise.all(
+    enrollments.map(async (e) => {
+      const p = await getPerson(e.personId);
+      return [e.id, p] as const;
+    }),
+  );
+  const personMap = new Map(personEntries);
 
   return (
     <>
@@ -110,7 +120,7 @@ export default async function SequenceDetailPage({
               ) : (
                 <ul className="divide-y divide-[var(--border)]">
                   {enrollments.map((e) => {
-                    const p = getPerson(e.personId);
+                    const p = personMap.get(e.id);
                     const sdr = teamMemberById(e.sdrId);
                     if (!p) return null;
                     return (

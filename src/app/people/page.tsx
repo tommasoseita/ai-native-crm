@@ -11,11 +11,13 @@ import { teamMemberById } from "@/lib/types";
 import { relativeTime, today } from "@/lib/utils";
 import { User, Mail } from "lucide-react";
 
-export default function PeoplePage() {
-  const people = listPeople();
-  const companies = listCompanies();
+export default async function PeoplePage() {
+  const [people, companies, config] = await Promise.all([
+    listPeople(),
+    listCompanies(),
+    getScoringConfig(),
+  ]);
   const companyMap = new Map(companies.map((c) => [c.id, c]));
-  const config = getScoringConfig();
   const scores = scoreMany(people, companyMap, config, today());
 
   const sorted = [...people].sort((a, b) => {

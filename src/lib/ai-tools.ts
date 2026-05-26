@@ -3,10 +3,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   enrollmentsForPerson,
   getCompany,
-  getDeal,
   getPerson,
   getScoringConfig,
-  getSequence,
   listCompanies,
   listDeals,
   listPeople,
@@ -28,10 +26,10 @@ import {
   STAGES,
   TEAM,
   teamMemberById,
+  type Company,
   type DealStage,
   type Person,
 } from "./types";
-import { todayISO } from "./utils";
 
 // ─── Tool definitions ───────────────────────────────────────────────────────
 
@@ -189,8 +187,8 @@ export type ToolContext = { sdrId: string; date: string };
 
 type AnyInput = Record<string, unknown>;
 
-function enrichPerson(p: Person) {
-  const company = p.companyId ? getCompany(p.companyId) : undefined;
+function enrichPerson(p: Person, companyMap: Map<string, Company>) {
+  const company = p.companyId ? companyMap.get(p.companyId) : undefined;
   const owner = teamMemberById(p.ownerId);
   return {
     id: p.id,
@@ -208,7 +206,7 @@ export async function executeTool(
   ctx: ToolContext,
 ): Promise<string> {
   try {
-    const result = run(name, input, ctx);
+    const result = await run(name, input, ctx);
     return JSON.stringify(result);
   } catch (err) {
     return JSON.stringify({
@@ -217,12 +215,22 @@ export async function executeTool(
   }
 }
 
-function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
+async function run(
+  name: string,
+  input: AnyInput,
+  ctx: ToolContext,
+): Promise<unknown> {
   const sdrIdFor = (key = "sdr_id") => (input[key] as string) || ctx.sdrId;
   const dateFor = () => (input.date as string) || ctx.date;
 
   switch (name) {
     case "get_context": {
+      const [companies, people, deals, sequences] = await Promise.all([
+        listCompanies(),
+        listPeople(),
+        listDeals(),
+        listSequences(),
+      ]);
       return {
         viewing_as: teamMemberById(ctx.sdrId),
         date: ctx.date,
@@ -232,10 +240,10 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
           dailyCap: m.dailyCap,
         })),
         counts: {
-          companies: listCompanies().length,
-          contacts: listPeople().length,
-          deals: listDeals().length,
-          sequences: listSequences().length,
+          companies: companies.length,
+          contacts: people.length,
+          deals: deals.length,
+          sequences: sequences.length,
         },
         stages: STAGES.map((s) => s.id),
       };
@@ -243,10 +251,22 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
 
     case "get_daily_queue": {
       const sdrId = sdrIdFor();
-      const q = getDailyQueue(sdrId, dateFor());
+      const q = await getDailyQueue(sdrId, dateFor());
+      const personIds = [
+        ...q.overdue,
+        ...q.dueToday,
+        ...q.completedToday,
+      ].map((t) => t.personId);
+      const uniquePersonIds = [...new Set(personIds)];
+      const persons = await Promise.all(uniquePersonIds.map((id) => getPerson(id)));
+      const personMap = new Map(persons.filter(Boolean).map((p) => [p!.id, p!]));
+      const companyIds = [...new Set([...personMap.values()].map((p) => p.companyId).filter((c): c is string => !!c))];
+      const companies = await Promise.all(companyIds.map((id) => getCompany(id)));
+      const companyMap = new Map(companies.filter(Boolean).map((c) => [c!.id, c!]));
+
       const mapTask = (t: (typeof q.dueToday)[number]) => {
-        const p = getPerson(t.personId);
-        const c = p?.companyId ? getCompany(p.companyId) : undefined;
+        const p = personMap.get(t.personId);
+        const c = p?.companyId ? companyMap.get(p.companyId) : undefined;
         return {
           id: t.id,
           stepNumber: t.stepNumber,
@@ -276,16 +296,18 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
 
     case "get_enrollment_capacity": {
       const sdrId = sdrIdFor();
-      const cap = enrollmentCapacity(sdrId, dateFor());
+      const cap = await enrollmentCapacity(sdrId, dateFor());
       return { sdr: teamMemberById(sdrId), ...cap };
     }
 
     case "suggest_enrollments": {
       const sdrId = sdrIdFor();
       const limit = input.limit as number | undefined;
-      const suggestions = suggestEnrollments(sdrId, dateFor(), limit);
+      const suggestions = await suggestEnrollments(sdrId, dateFor(), limit);
+      const companies = await listCompanies();
+      const companyMap = new Map(companies.map((c) => [c.id, c]));
       return suggestions.map((s) => ({
-        ...enrichPerson(s.person),
+        ...enrichPerson(s.person, companyMap),
         score: s.score.score,
         tier: s.score.tier,
         breakdown: s.score.breakdown,
@@ -298,10 +320,13 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
       const search = (input.search as string | undefined)?.toLowerCase();
       const limit = (input.limit as number | undefined) ?? 20;
 
-      const all = listPeople();
-      const config = getScoringConfig();
-      const companies = new Map(listCompanies().map((c) => [c.id, c]));
-      const scores = scoreMany(all, companies, config);
+      const [all, config, companies] = await Promise.all([
+        listPeople(),
+        getScoringConfig(),
+        listCompanies(),
+      ]);
+      const companyMap = new Map(companies.map((c) => [c.id, c]));
+      const scores = scoreMany(all, companyMap, config);
 
       const filtered = all
         .filter((p) => (ownerId ? p.ownerId === ownerId : true))
@@ -317,44 +342,53 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
         .sort((a, b) => (scores.get(b.id)?.score ?? 0) - (scores.get(a.id)?.score ?? 0))
         .slice(0, limit);
 
-      return filtered.map((p) => {
+      const enrollments = await Promise.all(
+        filtered.map((p) => activeEnrollmentForPerson(p.id)),
+      );
+
+      return filtered.map((p, i) => {
         const s = scores.get(p.id);
-        const enr = activeEnrollmentForPerson(p.id);
         return {
-          ...enrichPerson(p),
+          ...enrichPerson(p, companyMap),
           tier: s?.tier,
           score: s?.score,
-          in_active_sequence: !!enr,
+          in_active_sequence: !!enrollments[i],
         };
       });
     }
 
     case "get_person": {
       const personId = input.person_id as string;
-      const p = getPerson(personId);
+      const p = await getPerson(personId);
       if (!p) return { error: "person not found" };
-      const company = p.companyId ? getCompany(p.companyId) : undefined;
-      const config = getScoringConfig();
+      const [company, config, enrollments] = await Promise.all([
+        p.companyId ? getCompany(p.companyId) : Promise.resolve(undefined),
+        getScoringConfig(),
+        enrollmentsForPerson(personId),
+      ]);
       const score = scorePerson(p, company, config);
-      const enrollments = enrollmentsForPerson(personId).map((e) => ({
-        id: e.id,
-        sequence_id: e.sequenceId,
-        status: e.status,
-        enrolled_at: e.enrolledAt,
-        exit_reason: e.exitReason,
-        tasks: tasksForEnrollment(e.id).map((t) => ({
-          step: t.stepNumber,
-          due_date: t.dueDate,
-          status: t.status,
-          outcome: t.outcome,
+      const enrichedEnrollments = await Promise.all(
+        enrollments.map(async (e) => ({
+          id: e.id,
+          sequence_id: e.sequenceId,
+          status: e.status,
+          enrolled_at: e.enrolledAt,
+          exit_reason: e.exitReason,
+          tasks: (await tasksForEnrollment(e.id)).map((t) => ({
+            step: t.stepNumber,
+            due_date: t.dueDate,
+            status: t.status,
+            outcome: t.outcome,
+          })),
         })),
-      }));
+      );
+      const companyMap = new Map(company ? [[company.id, company]] : []);
       return {
-        ...enrichPerson(p),
+        ...enrichPerson(p, companyMap),
         last_contacted_at: p.lastContactedAt,
         last_engaged_at: p.lastEngagedAt,
         score,
-        enrollments,
+        enrollments: enrichedEnrollments,
       };
     }
 
@@ -362,38 +396,53 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
       const industry = input.industry as string | undefined;
       const search = (input.search as string | undefined)?.toLowerCase();
       const limit = (input.limit as number | undefined) ?? 20;
-      return listCompanies()
+      const all = await listCompanies();
+      const filtered = all
         .filter((c) => (industry ? c.industry === industry : true))
         .filter((c) => {
           if (!search) return true;
           return (c.name + " " + (c.domain ?? "")).toLowerCase().includes(search);
         })
-        .slice(0, limit)
-        .map((c) => ({
-          id: c.id,
-          name: c.name,
-          domain: c.domain,
-          industry: c.industry,
-          size: c.size,
-          location: c.location,
-          arr: c.arr,
-          contacts_count: peopleByCompany(c.id).length,
-          open_deals_count: dealsByCompany(c.id).filter(
-            (d) => d.stage !== "won" && d.stage !== "lost",
-          ).length,
-          owner: teamMemberById(c.ownerId)?.name,
-        }));
+        .slice(0, limit);
+      const detail = await Promise.all(
+        filtered.map(async (c) => {
+          const [contacts, deals] = await Promise.all([
+            peopleByCompany(c.id),
+            dealsByCompany(c.id),
+          ]);
+          return {
+            id: c.id,
+            name: c.name,
+            domain: c.domain,
+            industry: c.industry,
+            size: c.size,
+            location: c.location,
+            arr: c.arr,
+            contacts_count: contacts.length,
+            open_deals_count: deals.filter(
+              (d) => d.stage !== "won" && d.stage !== "lost",
+            ).length,
+            owner: teamMemberById(c.ownerId)?.name,
+          };
+        }),
+      );
+      return detail;
     }
 
     case "get_company": {
       const companyId = input.company_id as string;
-      const c = getCompany(companyId);
+      const c = await getCompany(companyId);
       if (!c) return { error: "company not found" };
+      const [contacts, deals] = await Promise.all([
+        peopleByCompany(companyId),
+        dealsByCompany(companyId),
+      ]);
+      const companyMap = new Map([[c.id, c]]);
       return {
         ...c,
         owner: teamMemberById(c.ownerId),
-        contacts: peopleByCompany(companyId).map(enrichPerson),
-        deals: dealsByCompany(companyId).map((d) => ({
+        contacts: contacts.map((p) => enrichPerson(p, companyMap)),
+        deals: deals.map((d) => ({
           id: d.id,
           name: d.name,
           stage: d.stage,
@@ -411,7 +460,15 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
       const companyId = input.company_id as string | undefined;
       const openOnly = (input.open_only as boolean | undefined) ?? true;
 
-      return listDeals()
+      const [deals, companies, people] = await Promise.all([
+        listDeals(),
+        listCompanies(),
+        listPeople(),
+      ]);
+      const companyMap = new Map(companies.map((c) => [c.id, c]));
+      const personMap = new Map(people.map((p) => [p.id, p]));
+
+      return deals
         .filter((d) => (stage ? d.stage === stage : true))
         .filter((d) => (ownerId ? d.ownerId === ownerId : true))
         .filter((d) => (companyId ? d.companyId === companyId : true))
@@ -419,8 +476,8 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
           openOnly ? d.stage !== "won" && d.stage !== "lost" : true,
         )
         .map((d) => {
-          const c = d.companyId ? getCompany(d.companyId) : undefined;
-          const p = d.primaryContactId ? getPerson(d.primaryContactId) : undefined;
+          const c = d.companyId ? companyMap.get(d.companyId) : undefined;
+          const p = d.primaryContactId ? personMap.get(d.primaryContactId) : undefined;
           return {
             id: d.id,
             name: d.name,
@@ -442,7 +499,8 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
 
     case "get_pipeline_summary": {
       const ownerId = input.owner_id as string | undefined;
-      const deals = listDeals().filter((d) =>
+      const allDeals = await listDeals();
+      const deals = allDeals.filter((d) =>
         ownerId ? d.ownerId === ownerId : true,
       );
       const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
@@ -477,24 +535,26 @@ function run(name: string, input: AnyInput, ctx: ToolContext): unknown {
     }
 
     case "list_sequences": {
-      return listSequences().map((s) => {
-        const steps = listSequenceSteps(s.id);
-        return {
-          id: s.id,
-          name: s.name,
-          description: s.description,
-          step_count: steps.length,
-          day_offsets: steps.map((st) => st.dayOffset),
-        };
-      });
+      const sequences = await listSequences();
+      const detail = await Promise.all(
+        sequences.map(async (s) => {
+          const steps = await listSequenceSteps(s.id);
+          return {
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            step_count: steps.length,
+            day_offsets: steps.map((st) => st.dayOffset),
+          };
+        }),
+      );
+      return detail;
     }
 
     default:
       return { error: `unknown tool: ${name}` };
   }
 }
-
-void getSequence; // re-export kept for future tools
 
 // ─── System prompt ──────────────────────────────────────────────────────────
 

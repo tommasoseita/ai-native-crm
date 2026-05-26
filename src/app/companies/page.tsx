@@ -13,8 +13,19 @@ import { teamMemberById } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Building, Globe } from "lucide-react";
 
-export default function CompaniesPage() {
-  const companies = listCompanies();
+export default async function CompaniesPage() {
+  const companies = await listCompanies();
+  const companyData = new Map(
+    await Promise.all(
+      companies.map(async (c) => {
+        const [people, deals] = await Promise.all([
+          peopleByCompany(c.id),
+          dealsByCompany(c.id),
+        ]);
+        return [c.id, { people, deals }] as const;
+      }),
+    ),
+  );
   return (
     <>
       <TopBar title="Companies" icon={<Building size={14} className="text-blue-500" />} />
@@ -47,8 +58,9 @@ export default function CompaniesPage() {
           <tbody>
             {companies.map((c) => {
               const owner = teamMemberById(c.ownerId);
-              const peopleCount = peopleByCompany(c.id).length;
-              const openDeals = dealsByCompany(c.id).filter(
+              const data = companyData.get(c.id)!;
+              const peopleCount = data.people.length;
+              const openDeals = data.deals.filter(
                 (d) => d.stage !== "won" && d.stage !== "lost",
               );
               const openValue = openDeals.reduce((sum, d) => sum + d.value, 0);

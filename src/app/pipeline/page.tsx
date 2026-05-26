@@ -7,10 +7,12 @@ import { listCompanies, listDeals, listPeople } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
 
-export default function PipelinePage() {
-  const deals = listDeals();
-  const companies = listCompanies();
-  const people = listPeople();
+export default async function PipelinePage() {
+  const [deals, companies, people] = await Promise.all([
+    listDeals(),
+    listCompanies(),
+    listPeople(),
+  ]);
   const open = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   const totalValue = open.reduce((sum, d) => sum + d.value, 0);
   const weighted = open.reduce(

@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "./db";
+import { getDb } from "./db";
 import { teamMemberById, type Enrollment, type Person, type Task } from "./types";
 import {
   listCompanies,
@@ -50,37 +50,37 @@ export type DailyQueue = {
   capacity: { cap: number; used: number; pending: number; free: number };
 };
 
-export function getDailyQueue(sdrId: string, date: string = todayISO()): DailyQueue {
-  const overdue = (
-    db
-      .prepare(
-        `SELECT * FROM tasks
-         WHERE sdr_id = ? AND status = 'pending' AND due_date < ?
-         ORDER BY due_date ASC, created_at ASC`,
-      )
-      .all(sdrId, date) as TaskRow[]
-  ).map(mapTask);
+export async function getDailyQueue(
+  sdrId: string,
+  date: string = todayISO(),
+): Promise<DailyQueue> {
+  const db = await getDb();
 
-  const dueToday = (
-    db
-      .prepare(
-        `SELECT * FROM tasks
-         WHERE sdr_id = ? AND status = 'pending' AND due_date = ?
-         ORDER BY step_number ASC, created_at ASC`,
-      )
-      .all(sdrId, date) as TaskRow[]
-  ).map(mapTask);
+  const [overdueR, dueTodayR, completedR] = await Promise.all([
+    db.execute({
+      sql: `SELECT * FROM tasks
+            WHERE sdr_id = ? AND status = 'pending' AND due_date < ?
+            ORDER BY due_date ASC, created_at ASC`,
+      args: [sdrId, date],
+    }),
+    db.execute({
+      sql: `SELECT * FROM tasks
+            WHERE sdr_id = ? AND status = 'pending' AND due_date = ?
+            ORDER BY step_number ASC, created_at ASC`,
+      args: [sdrId, date],
+    }),
+    db.execute({
+      sql: `SELECT * FROM tasks
+            WHERE sdr_id = ? AND status IN ('completed','skipped')
+              AND substr(completed_at, 1, 10) = ?
+            ORDER BY completed_at DESC`,
+      args: [sdrId, date],
+    }),
+  ]);
 
-  const completedToday = (
-    db
-      .prepare(
-        `SELECT * FROM tasks
-         WHERE sdr_id = ? AND status IN ('completed','skipped')
-           AND substr(completed_at, 1, 10) = ?
-         ORDER BY completed_at DESC`,
-      )
-      .all(sdrId, date) as TaskRow[]
-  ).map(mapTask);
+  const overdue = (overdueR.rows as unknown as TaskRow[]).map(mapTask);
+  const dueToday = (dueTodayR.rows as unknown as TaskRow[]).map(mapTask);
+  const completedToday = (completedR.rows as unknown as TaskRow[]).map(mapTask);
 
   const member = teamMemberById(sdrId);
   const cap = member?.dailyCap ?? 35;
@@ -106,13 +106,15 @@ export function getDailyQueue(sdrId: string, date: string = todayISO()): DailyQu
  * never recommend more than what the cap can sustain at steady state
  * (cap / step count).
  */
-export function enrollmentCapacity(sdrId: string, date: string = todayISO()): {
-  freeToday: number;
-  steadyState: number;
-  recommended: number;
-} {
-  const q = getDailyQueue(sdrId, date);
-  const stepCount = listSequenceSteps("seq_cold_call_6").length || 6;
+export async function enrollmentCapacity(
+  sdrId: string,
+  date: string = todayISO(),
+): Promise<{ freeToday: number; steadyState: number; recommended: number }> {
+  const [q, steps] = await Promise.all([
+    getDailyQueue(sdrId, date),
+    listSequenceSteps("seq_cold_call_6"),
+  ]);
+  const stepCount = steps.length || 6;
   const steadyState = Math.floor(q.capacity.cap / stepCount);
   const recommended = Math.min(q.capacity.free, steadyState);
   return { freeToday: q.capacity.free, steadyState, recommended };
@@ -122,28 +124,32 @@ export function enrollmentCapacity(sdrId: string, date: string = todayISO()): {
  * Pick the top-scored people that are NOT in an active enrollment, so the SDR
  * can enroll them. Limited by recommended capacity.
  */
-export function suggestEnrollments(
+export async function suggestEnrollments(
   sdrId: string,
   date: string = todayISO(),
   limit?: number,
-): { person: Person; score: Score }[] {
-  const cap = enrollmentCapacity(sdrId, date);
+): Promise<{ person: Person; score: Score }[]> {
+  const cap = await enrollmentCapacity(sdrId, date);
   const max = limit ?? cap.recommended;
   if (max <= 0) return [];
 
-  // People without an active enrollment.
-  const candidates = listPeople().filter((p) => {
-    const active = db
-      .prepare(
-        "SELECT 1 FROM enrollments WHERE person_id = ? AND status = 'active' LIMIT 1",
-      )
-      .get(p.id);
-    return !active;
-  });
+  const db = await getDb();
+  const allPeople = await listPeople();
+  // One query to find which people have active enrollments; filter in memory.
+  const active = await db.execute(
+    "SELECT person_id FROM enrollments WHERE status = 'active'",
+  );
+  const activeSet = new Set(
+    (active.rows as unknown as { person_id: string }[]).map((r) => r.person_id),
+  );
+  const candidates = allPeople.filter((p) => !activeSet.has(p.id));
 
-  const config = getScoringConfig();
-  const companies = new Map(listCompanies().map((c) => [c.id, c]));
-  const scores = scoreMany(candidates, companies, config, nowDate());
+  const [config, companies] = await Promise.all([
+    getScoringConfig(),
+    listCompanies(),
+  ]);
+  const companyMap = new Map(companies.map((c) => [c.id, c]));
+  const scores = scoreMany(candidates, companyMap, config, nowDate());
 
   return candidates
     .map((p) => ({ person: p, score: scores.get(p.id)! }))
@@ -155,64 +161,75 @@ export function suggestEnrollments(
  * Create the tasks for an enrollment based on the sequence steps. Used by
  * both seeding and the enrollPerson server action.
  */
-export function generateTasksForEnrollment(
+export async function generateTasksForEnrollment(
   enrollment: Enrollment,
   randomId: () => string,
-): void {
-  const steps = listSequenceSteps(enrollment.sequenceId);
+): Promise<void> {
+  const steps = await listSequenceSteps(enrollment.sequenceId);
   const enrolledAt = new Date(enrollment.enrolledAt + "T00:00:00Z");
-  const insertTask = db.prepare(
-    `INSERT INTO tasks (id, enrollment_id, person_id, sdr_id, step_number, channel, due_date, status, outcome, completed_at, created_at)
-     VALUES (@id, @enrollment_id, @person_id, @sdr_id, @step_number, @channel, @due_date, 'pending', NULL, NULL, @created_at)`,
-  );
-  const tx = db.transaction(() => {
-    for (const step of steps) {
+  const db = await getDb();
+  await db.batch(
+    steps.map((step) => {
       const d = new Date(enrolledAt);
       d.setUTCDate(d.getUTCDate() + step.dayOffset);
-      insertTask.run({
-        id: randomId(),
-        enrollment_id: enrollment.id,
-        person_id: enrollment.personId,
-        sdr_id: enrollment.sdrId,
-        step_number: step.stepNumber,
-        channel: step.channel,
-        due_date: d.toISOString().slice(0, 10),
-        created_at: enrollment.enrolledAt,
-      });
-    }
-  });
-  tx();
+      return {
+        sql: `INSERT INTO tasks (id, enrollment_id, person_id, sdr_id, step_number, channel, due_date, status, outcome, completed_at, created_at)
+              VALUES (:id, :enrollment_id, :person_id, :sdr_id, :step_number, :channel, :due_date, 'pending', NULL, NULL, :created_at)`,
+        args: {
+          id: randomId(),
+          enrollment_id: enrollment.id,
+          person_id: enrollment.personId,
+          sdr_id: enrollment.sdrId,
+          step_number: step.stepNumber,
+          channel: step.channel,
+          due_date: d.toISOString().slice(0, 10),
+          created_at: enrollment.enrolledAt,
+        },
+      };
+    }),
+    "write",
+  );
 }
 
 /**
  * Mark all active tasks of an enrollment as skipped and the enrollment as
  * exited. Used when a contact replies, books a meeting, or is disqualified.
  */
-export function exitEnrollment(enrollmentId: string, reason: string): void {
-  const tx = db.transaction(() => {
-    db.prepare(
-      "UPDATE tasks SET status = 'skipped' WHERE enrollment_id = ? AND status = 'pending'",
-    ).run(enrollmentId);
-    db.prepare(
-      `UPDATE enrollments SET status = 'exited', exit_reason = ?, completed_at = ? WHERE id = ?`,
-    ).run(reason, todayISO(), enrollmentId);
-  });
-  tx();
+export async function exitEnrollment(
+  enrollmentId: string,
+  reason: string,
+): Promise<void> {
+  const db = await getDb();
+  await db.batch(
+    [
+      {
+        sql: "UPDATE tasks SET status = 'skipped' WHERE enrollment_id = ? AND status = 'pending'",
+        args: [enrollmentId],
+      },
+      {
+        sql: "UPDATE enrollments SET status = 'exited', exit_reason = ?, completed_at = ? WHERE id = ?",
+        args: [reason, todayISO(), enrollmentId],
+      },
+    ],
+    "write",
+  );
 }
 
 /**
  * If all tasks for an enrollment are completed/skipped, mark the enrollment
  * itself as completed.
  */
-export function maybeCompleteEnrollment(enrollmentId: string): void {
-  const row = db
-    .prepare(
-      "SELECT COUNT(*) as n FROM tasks WHERE enrollment_id = ? AND status = 'pending'",
-    )
-    .get(enrollmentId) as { n: number };
-  if (row.n === 0) {
-    db.prepare(
-      `UPDATE enrollments SET status = 'completed', completed_at = ? WHERE id = ? AND status = 'active'`,
-    ).run(todayISO(), enrollmentId);
+export async function maybeCompleteEnrollment(enrollmentId: string): Promise<void> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT COUNT(*) AS n FROM tasks WHERE enrollment_id = ? AND status = 'pending'",
+    args: [enrollmentId],
+  });
+  const n = Number(r.rows[0]?.n ?? 0);
+  if (n === 0) {
+    await db.execute({
+      sql: "UPDATE enrollments SET status = 'completed', completed_at = ? WHERE id = ? AND status = 'active'",
+      args: [todayISO(), enrollmentId],
+    });
   }
 }

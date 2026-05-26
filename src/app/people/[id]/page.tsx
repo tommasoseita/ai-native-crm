@@ -34,30 +34,52 @@ export default async function PersonDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const person = getPerson(id);
+  const person = await getPerson(id);
   if (!person) notFound();
 
-  const company = person.companyId ? getCompany(person.companyId) : undefined;
+  const [
+    company,
+    primaryDeals,
+    associatedDealsRaw,
+    companies,
+    people,
+    sequences,
+    config,
+    activeEnr,
+  ] = await Promise.all([
+    person.companyId ? getCompany(person.companyId) : Promise.resolve(undefined),
+    dealsByPrimaryContact(id),
+    dealsByContact(id),
+    listCompanies(),
+    listPeople(),
+    listSequences(),
+    getScoringConfig(),
+    activeEnrollmentForPerson(id),
+  ]);
   const owner = teamMemberById(person.ownerId);
-  const primaryDeals = dealsByPrimaryContact(id);
-  const associatedDeals = dealsByContact(id).filter(
+  const associatedDeals = associatedDealsRaw.filter(
     (d) => !primaryDeals.some((pd) => pd.id === d.id),
   );
   const allDeals = [...primaryDeals, ...associatedDeals];
-  const companies = listCompanies();
-  const people = listPeople();
-  const sequences = listSequences();
   const defaultSequence = sequences[0];
 
-  const config = getScoringConfig();
   const score = scorePerson(person, company, config, today());
 
-  const activeEnr = activeEnrollmentForPerson(id);
-  const enrSequence = activeEnr ? getSequence(activeEnr.sequenceId) : undefined;
-  const enrTasks = activeEnr ? tasksForEnrollment(activeEnr.id) : [];
-  const sdrForEnroll = await currentSdrId();
+  const [enrSequence, enrTasks, sdrForEnroll] = await Promise.all([
+    activeEnr ? getSequence(activeEnr.sequenceId) : Promise.resolve(undefined),
+    activeEnr ? tasksForEnrollment(activeEnr.id) : Promise.resolve([]),
+    currentSdrId(),
+  ]);
   const todayStr = todayISO();
   const nextTask = enrTasks.find((t) => t.status === "pending");
+
+  const dealCompanyEntries = await Promise.all(
+    allDeals.map(async (d) => {
+      const dealCompany = d.companyId ? await getCompany(d.companyId) : undefined;
+      return [d.id, dealCompany] as const;
+    }),
+  );
+  const dealCompanyMap = new Map(dealCompanyEntries);
 
   return (
     <>
@@ -293,7 +315,7 @@ export default async function PersonDetailPage({
               ) : (
                 <ul>
                   {allDeals.map((d, i) => {
-                    const dealCompany = d.companyId ? getCompany(d.companyId) : undefined;
+                    const dealCompany = dealCompanyMap.get(d.id);
                     const isPrimary = primaryDeals.some((pd) => pd.id === d.id);
                     return (
                       <li

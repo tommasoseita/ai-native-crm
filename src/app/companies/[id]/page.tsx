@@ -25,13 +25,15 @@ export default async function CompanyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const company = getCompany(id);
+  const [company, allCompanies, allPeople, people, deals] = await Promise.all([
+    getCompany(id),
+    listCompanies(),
+    listPeople(),
+    peopleByCompany(id),
+    dealsByCompany(id),
+  ]);
   if (!company) notFound();
 
-  const allCompanies = listCompanies();
-  const allPeople = listPeople();
-  const people = peopleByCompany(id);
-  const deals = dealsByCompany(id);
   const owner = teamMemberById(company.ownerId);
   const openDealValue = deals
     .filter((d) => d.stage !== "won" && d.stage !== "lost")

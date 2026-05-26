@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
-import { db } from "./db";
+import { getDb } from "./db";
 import {
   exitEnrollment as exitEnrollmentImpl,
   generateTasksForEnrollment,
@@ -26,20 +26,22 @@ export async function createCompany(formData: FormData) {
   const id = newId("c");
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
-  db.prepare(
-    `INSERT INTO companies (id, name, domain, industry, size, location, arr, owner_id, description, created_at)
-     VALUES (@id, @name, @domain, @industry, @size, @location, @arr, @owner_id, @description, @created_at)`,
-  ).run({
-    id,
-    name,
-    domain: String(formData.get("domain") || "") || null,
-    industry: String(formData.get("industry") || "") || null,
-    size: String(formData.get("size") || "") || null,
-    location: String(formData.get("location") || "") || null,
-    arr: formData.get("arr") ? Number(formData.get("arr")) : null,
-    owner_id: String(formData.get("ownerId") || "") || null,
-    description: String(formData.get("description") || "") || null,
-    created_at: todayISO(),
+  const db = await getDb();
+  await db.execute({
+    sql: `INSERT INTO companies (id, name, domain, industry, size, location, arr, owner_id, description, created_at)
+          VALUES (:id, :name, :domain, :industry, :size, :location, :arr, :owner_id, :description, :created_at)`,
+    args: {
+      id,
+      name,
+      domain: String(formData.get("domain") || "") || null,
+      industry: String(formData.get("industry") || "") || null,
+      size: String(formData.get("size") || "") || null,
+      location: String(formData.get("location") || "") || null,
+      arr: formData.get("arr") ? Number(formData.get("arr")) : null,
+      owner_id: String(formData.get("ownerId") || "") || null,
+      description: String(formData.get("description") || "") || null,
+      created_at: todayISO(),
+    },
   });
   revalidatePath("/companies");
   revalidatePath("/");
@@ -47,28 +49,31 @@ export async function createCompany(formData: FormData) {
 }
 
 export async function updateCompany(id: string, formData: FormData) {
-  db.prepare(
-    `UPDATE companies SET
-       name = @name, domain = @domain, industry = @industry, size = @size,
-       location = @location, arr = @arr, owner_id = @owner_id, description = @description
-     WHERE id = @id`,
-  ).run({
-    id,
-    name: String(formData.get("name") || "").trim(),
-    domain: String(formData.get("domain") || "") || null,
-    industry: String(formData.get("industry") || "") || null,
-    size: String(formData.get("size") || "") || null,
-    location: String(formData.get("location") || "") || null,
-    arr: formData.get("arr") ? Number(formData.get("arr")) : null,
-    owner_id: String(formData.get("ownerId") || "") || null,
-    description: String(formData.get("description") || "") || null,
+  const db = await getDb();
+  await db.execute({
+    sql: `UPDATE companies SET
+            name = :name, domain = :domain, industry = :industry, size = :size,
+            location = :location, arr = :arr, owner_id = :owner_id, description = :description
+          WHERE id = :id`,
+    args: {
+      id,
+      name: String(formData.get("name") || "").trim(),
+      domain: String(formData.get("domain") || "") || null,
+      industry: String(formData.get("industry") || "") || null,
+      size: String(formData.get("size") || "") || null,
+      location: String(formData.get("location") || "") || null,
+      arr: formData.get("arr") ? Number(formData.get("arr")) : null,
+      owner_id: String(formData.get("ownerId") || "") || null,
+      description: String(formData.get("description") || "") || null,
+    },
   });
   revalidatePath("/companies");
   revalidatePath(`/companies/${id}`);
 }
 
 export async function deleteCompany(id: string) {
-  db.prepare("DELETE FROM companies WHERE id = ?").run(id);
+  const db = await getDb();
+  await db.execute({ sql: "DELETE FROM companies WHERE id = ?", args: [id] });
   revalidatePath("/companies");
   revalidatePath("/");
   redirect("/companies");
@@ -82,22 +87,24 @@ export async function createPerson(formData: FormData) {
   const firstName = String(formData.get("firstName") || "").trim();
   const lastName = String(formData.get("lastName") || "").trim();
   if (!email || !firstName) return;
-  db.prepare(
-    `INSERT INTO people (id, first_name, last_name, email, phone, role, company_id, owner_id, linkedin, last_contacted_at, last_engaged_at, created_at)
-     VALUES (@id, @first_name, @last_name, @email, @phone, @role, @company_id, @owner_id, @linkedin, @last_contacted_at, @last_engaged_at, @created_at)`,
-  ).run({
-    id,
-    first_name: firstName,
-    last_name: lastName,
-    email,
-    phone: String(formData.get("phone") || "") || null,
-    role: String(formData.get("role") || "") || null,
-    company_id: String(formData.get("companyId") || "") || null,
-    owner_id: String(formData.get("ownerId") || "") || null,
-    linkedin: String(formData.get("linkedin") || "") || null,
-    last_contacted_at: null,
-    last_engaged_at: null,
-    created_at: todayISO(),
+  const db = await getDb();
+  await db.execute({
+    sql: `INSERT INTO people (id, first_name, last_name, email, phone, role, company_id, owner_id, linkedin, last_contacted_at, last_engaged_at, created_at)
+          VALUES (:id, :first_name, :last_name, :email, :phone, :role, :company_id, :owner_id, :linkedin, :last_contacted_at, :last_engaged_at, :created_at)`,
+    args: {
+      id,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone: String(formData.get("phone") || "") || null,
+      role: String(formData.get("role") || "") || null,
+      company_id: String(formData.get("companyId") || "") || null,
+      owner_id: String(formData.get("ownerId") || "") || null,
+      linkedin: String(formData.get("linkedin") || "") || null,
+      last_contacted_at: null,
+      last_engaged_at: null,
+      created_at: todayISO(),
+    },
   });
   revalidatePath("/people");
   revalidatePath("/");
@@ -107,22 +114,24 @@ export async function createPerson(formData: FormData) {
 }
 
 export async function updatePerson(id: string, formData: FormData) {
-  db.prepare(
-    `UPDATE people SET
-       first_name = @first_name, last_name = @last_name, email = @email,
-       phone = @phone, role = @role, company_id = @company_id,
-       owner_id = @owner_id, linkedin = @linkedin
-     WHERE id = @id`,
-  ).run({
-    id,
-    first_name: String(formData.get("firstName") || "").trim(),
-    last_name: String(formData.get("lastName") || "").trim(),
-    email: String(formData.get("email") || "").trim(),
-    phone: String(formData.get("phone") || "") || null,
-    role: String(formData.get("role") || "") || null,
-    company_id: String(formData.get("companyId") || "") || null,
-    owner_id: String(formData.get("ownerId") || "") || null,
-    linkedin: String(formData.get("linkedin") || "") || null,
+  const db = await getDb();
+  await db.execute({
+    sql: `UPDATE people SET
+            first_name = :first_name, last_name = :last_name, email = :email,
+            phone = :phone, role = :role, company_id = :company_id,
+            owner_id = :owner_id, linkedin = :linkedin
+          WHERE id = :id`,
+    args: {
+      id,
+      first_name: String(formData.get("firstName") || "").trim(),
+      last_name: String(formData.get("lastName") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
+      phone: String(formData.get("phone") || "") || null,
+      role: String(formData.get("role") || "") || null,
+      company_id: String(formData.get("companyId") || "") || null,
+      owner_id: String(formData.get("ownerId") || "") || null,
+      linkedin: String(formData.get("linkedin") || "") || null,
+    },
   });
   revalidatePath("/people");
   revalidatePath(`/people/${id}`);
@@ -130,7 +139,8 @@ export async function updatePerson(id: string, formData: FormData) {
 }
 
 export async function deletePerson(id: string) {
-  db.prepare("DELETE FROM people WHERE id = ?").run(id);
+  const db = await getDb();
+  await db.execute({ sql: "DELETE FROM people WHERE id = ?", args: [id] });
   revalidatePath("/people");
   revalidatePath("/");
   redirect("/people");
@@ -143,25 +153,29 @@ export async function createDeal(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
   const stage = (String(formData.get("stage") || "lead") || "lead") as DealStage;
-  const next = db
-    .prepare("SELECT COALESCE(MAX(sort_index), -1) + 1 as n FROM deals WHERE stage = ?")
-    .get(stage) as { n: number };
-  db.prepare(
-    `INSERT INTO deals (id, name, value, currency, stage, company_id, primary_contact_id, owner_id, expected_close_date, probability, sort_index, created_at)
-     VALUES (@id, @name, @value, @currency, @stage, @company_id, @primary_contact_id, @owner_id, @expected_close_date, @probability, @sort_index, @created_at)`,
-  ).run({
-    id,
-    name,
-    value: formData.get("value") ? Number(formData.get("value")) : 0,
-    currency: String(formData.get("currency") || "EUR"),
-    stage,
-    company_id: String(formData.get("companyId") || "") || null,
-    primary_contact_id: String(formData.get("primaryContactId") || "") || null,
-    owner_id: String(formData.get("ownerId") || "") || null,
-    expected_close_date: String(formData.get("expectedCloseDate") || "") || null,
-    probability: formData.get("probability") ? Number(formData.get("probability")) : 0,
-    sort_index: next.n,
-    created_at: todayISO(),
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT COALESCE(MAX(sort_index), -1) + 1 AS n FROM deals WHERE stage = ?",
+    args: [stage],
+  });
+  const sortIndex = Number(r.rows[0]?.n ?? 0);
+  await db.execute({
+    sql: `INSERT INTO deals (id, name, value, currency, stage, company_id, primary_contact_id, owner_id, expected_close_date, probability, sort_index, created_at)
+          VALUES (:id, :name, :value, :currency, :stage, :company_id, :primary_contact_id, :owner_id, :expected_close_date, :probability, :sort_index, :created_at)`,
+    args: {
+      id,
+      name,
+      value: formData.get("value") ? Number(formData.get("value")) : 0,
+      currency: String(formData.get("currency") || "EUR"),
+      stage,
+      company_id: String(formData.get("companyId") || "") || null,
+      primary_contact_id: String(formData.get("primaryContactId") || "") || null,
+      owner_id: String(formData.get("ownerId") || "") || null,
+      expected_close_date: String(formData.get("expectedCloseDate") || "") || null,
+      probability: formData.get("probability") ? Number(formData.get("probability")) : 0,
+      sort_index: sortIndex,
+      created_at: todayISO(),
+    },
   });
   revalidatePath("/pipeline");
   revalidatePath("/");
@@ -171,24 +185,26 @@ export async function createDeal(formData: FormData) {
 }
 
 export async function updateDeal(id: string, formData: FormData) {
-  db.prepare(
-    `UPDATE deals SET
-       name = @name, value = @value, currency = @currency, stage = @stage,
-       company_id = @company_id, primary_contact_id = @primary_contact_id,
-       owner_id = @owner_id, expected_close_date = @expected_close_date,
-       probability = @probability
-     WHERE id = @id`,
-  ).run({
-    id,
-    name: String(formData.get("name") || "").trim(),
-    value: formData.get("value") ? Number(formData.get("value")) : 0,
-    currency: String(formData.get("currency") || "EUR"),
-    stage: String(formData.get("stage") || "lead"),
-    company_id: String(formData.get("companyId") || "") || null,
-    primary_contact_id: String(formData.get("primaryContactId") || "") || null,
-    owner_id: String(formData.get("ownerId") || "") || null,
-    expected_close_date: String(formData.get("expectedCloseDate") || "") || null,
-    probability: formData.get("probability") ? Number(formData.get("probability")) : 0,
+  const db = await getDb();
+  await db.execute({
+    sql: `UPDATE deals SET
+            name = :name, value = :value, currency = :currency, stage = :stage,
+            company_id = :company_id, primary_contact_id = :primary_contact_id,
+            owner_id = :owner_id, expected_close_date = :expected_close_date,
+            probability = :probability
+          WHERE id = :id`,
+    args: {
+      id,
+      name: String(formData.get("name") || "").trim(),
+      value: formData.get("value") ? Number(formData.get("value")) : 0,
+      currency: String(formData.get("currency") || "EUR"),
+      stage: String(formData.get("stage") || "lead"),
+      company_id: String(formData.get("companyId") || "") || null,
+      primary_contact_id: String(formData.get("primaryContactId") || "") || null,
+      owner_id: String(formData.get("ownerId") || "") || null,
+      expected_close_date: String(formData.get("expectedCloseDate") || "") || null,
+      probability: formData.get("probability") ? Number(formData.get("probability")) : 0,
+    },
   });
   revalidatePath("/pipeline");
   revalidatePath(`/deals/${id}`);
@@ -197,7 +213,8 @@ export async function updateDeal(id: string, formData: FormData) {
 }
 
 export async function deleteDeal(id: string) {
-  db.prepare("DELETE FROM deals WHERE id = ?").run(id);
+  const db = await getDb();
+  await db.execute({ sql: "DELETE FROM deals WHERE id = ?", args: [id] });
   revalidatePath("/pipeline");
   revalidatePath("/");
   redirect("/pipeline");
@@ -208,23 +225,22 @@ export async function moveDeal(
   targetStage: DealStage,
   orderedIds: string[],
 ) {
-  const updateStage = db.prepare(
-    "UPDATE deals SET stage = ?, sort_index = ? WHERE id = ?",
-  );
-  const tx = db.transaction(() => {
-    orderedIds.forEach((id, i) => {
+  const db = await getDb();
+  await db.batch(
+    orderedIds.map((id, i) => {
       if (id === dealId) {
-        updateStage.run(targetStage, i, id);
-      } else {
-        db.prepare("UPDATE deals SET sort_index = ? WHERE id = ? AND stage = ?").run(
-          i,
-          id,
-          targetStage,
-        );
+        return {
+          sql: "UPDATE deals SET stage = ?, sort_index = ? WHERE id = ?",
+          args: [targetStage, i, id],
+        };
       }
-    });
-  });
-  tx();
+      return {
+        sql: "UPDATE deals SET sort_index = ? WHERE id = ? AND stage = ?",
+        args: [i, id, targetStage],
+      };
+    }),
+    "write",
+  );
   revalidatePath("/pipeline");
   revalidatePath("/");
 }
@@ -232,18 +248,21 @@ export async function moveDeal(
 // ── Deal ↔ Person associations ───────────────────────────────────────────────
 
 export async function addContactToDeal(dealId: string, personId: string) {
-  db.prepare(
-    "INSERT OR IGNORE INTO deal_contacts (deal_id, person_id) VALUES (?, ?)",
-  ).run(dealId, personId);
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT OR IGNORE INTO deal_contacts (deal_id, person_id) VALUES (?, ?)",
+    args: [dealId, personId],
+  });
   revalidatePath(`/deals/${dealId}`);
   revalidatePath(`/people/${personId}`);
 }
 
 export async function removeContactFromDeal(dealId: string, personId: string) {
-  db.prepare("DELETE FROM deal_contacts WHERE deal_id = ? AND person_id = ?").run(
-    dealId,
-    personId,
-  );
+  const db = await getDb();
+  await db.execute({
+    sql: "DELETE FROM deal_contacts WHERE deal_id = ? AND person_id = ?",
+    args: [dealId, personId],
+  });
   revalidatePath(`/deals/${dealId}`);
   revalidatePath(`/people/${personId}`);
 }
@@ -260,46 +279,50 @@ export async function createSequence(formData: FormData) {
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => Number.isFinite(n));
 
-  db.prepare(
-    `INSERT INTO sequences (id, name, description, owner_id, created_at)
-     VALUES (@id, @name, @description, @owner_id, @created_at)`,
-  ).run({
-    id,
-    name,
-    description: String(formData.get("description") || "") || null,
-    owner_id: String(formData.get("ownerId") || "u1") || null,
-    created_at: todayISO(),
-  });
-
-  const insertStep = db.prepare(
-    `INSERT INTO sequence_steps (id, sequence_id, step_number, day_offset, channel)
-     VALUES (?, ?, ?, ?, 'call')`,
+  const db = await getDb();
+  await db.batch(
+    [
+      {
+        sql: `INSERT INTO sequences (id, name, description, owner_id, created_at)
+              VALUES (:id, :name, :description, :owner_id, :created_at)`,
+        args: {
+          id,
+          name,
+          description: String(formData.get("description") || "") || null,
+          owner_id: String(formData.get("ownerId") || "u1") || null,
+          created_at: todayISO(),
+        },
+      },
+      ...offsets.map((offset, i) => ({
+        sql: `INSERT INTO sequence_steps (id, sequence_id, step_number, day_offset, channel)
+              VALUES (?, ?, ?, ?, 'call')`,
+        args: [newId("step"), id, i + 1, offset],
+      })),
+    ],
+    "write",
   );
-  const tx = db.transaction(() => {
-    offsets.forEach((offset, i) => {
-      insertStep.run(newId("step"), id, i + 1, offset);
-    });
-  });
-  tx();
 
   revalidatePath("/sequences");
   redirect(`/sequences/${id}`);
 }
 
 export async function updateSequence(id: string, formData: FormData) {
-  db.prepare(
-    "UPDATE sequences SET name = @name, description = @description WHERE id = @id",
-  ).run({
-    id,
-    name: String(formData.get("name") || "").trim(),
-    description: String(formData.get("description") || "") || null,
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE sequences SET name = :name, description = :description WHERE id = :id",
+    args: {
+      id,
+      name: String(formData.get("name") || "").trim(),
+      description: String(formData.get("description") || "") || null,
+    },
   });
   revalidatePath("/sequences");
   revalidatePath(`/sequences/${id}`);
 }
 
 export async function deleteSequence(id: string) {
-  db.prepare("DELETE FROM sequences WHERE id = ?").run(id);
+  const db = await getDb();
+  await db.execute({ sql: "DELETE FROM sequences WHERE id = ?", args: [id] });
   revalidatePath("/sequences");
   redirect("/sequences");
 }
@@ -312,28 +335,30 @@ export async function enrollPerson(formData: FormData) {
   const sdrId = String(formData.get("sdrId") || "") || (await currentSdrId());
   if (!personId || !sequenceId) return;
 
+  const db = await getDb();
+
   // Reject double-enroll on an active sequence.
-  const active = db
-    .prepare(
-      "SELECT id FROM enrollments WHERE person_id = ? AND status = 'active' LIMIT 1",
-    )
-    .get(personId);
-  if (active) return;
+  const active = await db.execute({
+    sql: "SELECT id FROM enrollments WHERE person_id = ? AND status = 'active' LIMIT 1",
+    args: [personId],
+  });
+  if (active.rows.length > 0) return;
 
   const id = newId("enr");
   const enrolledAt = todayISO();
-  db.prepare(
-    `INSERT INTO enrollments (id, sequence_id, person_id, sdr_id, status, exit_reason, enrolled_at, completed_at)
-     VALUES (@id, @sequence_id, @person_id, @sdr_id, 'active', NULL, @enrolled_at, NULL)`,
-  ).run({
-    id,
-    sequence_id: sequenceId,
-    person_id: personId,
-    sdr_id: sdrId,
-    enrolled_at: enrolledAt,
+  await db.execute({
+    sql: `INSERT INTO enrollments (id, sequence_id, person_id, sdr_id, status, exit_reason, enrolled_at, completed_at)
+          VALUES (:id, :sequence_id, :person_id, :sdr_id, 'active', NULL, :enrolled_at, NULL)`,
+    args: {
+      id,
+      sequence_id: sequenceId,
+      person_id: personId,
+      sdr_id: sdrId,
+      enrolled_at: enrolledAt,
+    },
   });
 
-  generateTasksForEnrollment(
+  await generateTasksForEnrollment(
     {
       id,
       sequenceId,
@@ -354,7 +379,7 @@ export async function enrollPerson(formData: FormData) {
 }
 
 export async function exitEnrollment(enrollmentId: string, reason: string) {
-  exitEnrollmentImpl(enrollmentId, reason);
+  await exitEnrollmentImpl(enrollmentId, reason);
   revalidatePath("/today");
   revalidatePath("/");
 }
@@ -362,24 +387,29 @@ export async function exitEnrollment(enrollmentId: string, reason: string) {
 // ── Tasks ────────────────────────────────────────────────────────────────────
 
 export async function completeTask(taskId: string, outcome: TaskOutcome) {
-  const task = getTask(taskId);
+  const task = await getTask(taskId);
   if (!task) return;
   const completedAt = today().toISOString();
-  db.prepare(
-    "UPDATE tasks SET status = 'completed', outcome = ?, completed_at = ? WHERE id = ? AND status = 'pending'",
-  ).run(outcome, completedAt, taskId);
-
-  // Update the contact's last_contacted_at to today.
-  db.prepare("UPDATE people SET last_contacted_at = ? WHERE id = ?").run(
-    todayISO(),
-    task.personId,
+  const db = await getDb();
+  await db.batch(
+    [
+      {
+        sql: "UPDATE tasks SET status = 'completed', outcome = ?, completed_at = ? WHERE id = ? AND status = 'pending'",
+        args: [outcome, completedAt, taskId],
+      },
+      {
+        sql: "UPDATE people SET last_contacted_at = ? WHERE id = ?",
+        args: [todayISO(), task.personId],
+      },
+    ],
+    "write",
   );
 
   // If outcome triggers an exit, skip remaining tasks and close the enrollment.
   if (EXIT_OUTCOMES.includes(outcome)) {
-    exitEnrollmentImpl(task.enrollmentId, outcome);
+    await exitEnrollmentImpl(task.enrollmentId, outcome);
   } else {
-    maybeCompleteEnrollment(task.enrollmentId);
+    await maybeCompleteEnrollment(task.enrollmentId);
   }
 
   revalidatePath("/today");
@@ -388,31 +418,36 @@ export async function completeTask(taskId: string, outcome: TaskOutcome) {
 }
 
 export async function skipTask(taskId: string) {
-  const task = getTask(taskId);
+  const task = await getTask(taskId);
   if (!task) return;
-  db.prepare(
-    "UPDATE tasks SET status = 'skipped', completed_at = ? WHERE id = ? AND status = 'pending'",
-  ).run(today().toISOString(), taskId);
-  maybeCompleteEnrollment(task.enrollmentId);
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE tasks SET status = 'skipped', completed_at = ? WHERE id = ? AND status = 'pending'",
+    args: [today().toISOString(), taskId],
+  });
+  await maybeCompleteEnrollment(task.enrollmentId);
   revalidatePath("/today");
   revalidatePath("/");
   revalidatePath(`/people/${task.personId}`);
 }
 
 export async function rescheduleTask(taskId: string, newDate: string) {
-  db.prepare("UPDATE tasks SET due_date = ? WHERE id = ? AND status = 'pending'").run(
-    newDate,
-    taskId,
-  );
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE tasks SET due_date = ? WHERE id = ? AND status = 'pending'",
+    args: [newDate, taskId],
+  });
   revalidatePath("/today");
 }
 
 // ── Scoring config ───────────────────────────────────────────────────────────
 
 export async function updateScoringConfig(config: ScoringConfig) {
-  db.prepare(
-    "INSERT INTO scoring_config (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
-  ).run(JSON.stringify(config));
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT INTO scoring_config (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
+    args: [JSON.stringify(config)],
+  });
   revalidatePath("/scoring");
   revalidatePath("/people");
   revalidatePath("/today");

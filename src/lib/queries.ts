@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "./db";
+import { getDb } from "./db";
 import {
   DEFAULT_SCORING_CONFIG,
   type Company,
@@ -197,110 +197,118 @@ function mapTask(r: TaskRow): Task {
 
 // ── Companies ────────────────────────────────────────────────────────────────
 
-export function listCompanies(): Company[] {
-  return (db.prepare("SELECT * FROM companies ORDER BY name").all() as CompanyRow[]).map(
-    mapCompany,
-  );
+export async function listCompanies(): Promise<Company[]> {
+  const db = await getDb();
+  const r = await db.execute("SELECT * FROM companies ORDER BY name");
+  return (r.rows as unknown as CompanyRow[]).map(mapCompany);
 }
 
-export function getCompany(id: string): Company | undefined {
-  const row = db.prepare("SELECT * FROM companies WHERE id = ?").get(id) as
-    | CompanyRow
-    | undefined;
+export async function getCompany(id: string): Promise<Company | undefined> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM companies WHERE id = ?",
+    args: [id],
+  });
+  const row = r.rows[0] as unknown as CompanyRow | undefined;
   return row ? mapCompany(row) : undefined;
 }
 
 // ── People ───────────────────────────────────────────────────────────────────
 
-export function listPeople(): Person[] {
-  return (
-    db.prepare("SELECT * FROM people ORDER BY last_name, first_name").all() as PersonRow[]
-  ).map(mapPerson);
+export async function listPeople(): Promise<Person[]> {
+  const db = await getDb();
+  const r = await db.execute("SELECT * FROM people ORDER BY last_name, first_name");
+  return (r.rows as unknown as PersonRow[]).map(mapPerson);
 }
 
-export function getPerson(id: string): Person | undefined {
-  const row = db.prepare("SELECT * FROM people WHERE id = ?").get(id) as
-    | PersonRow
-    | undefined;
+export async function getPerson(id: string): Promise<Person | undefined> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM people WHERE id = ?",
+    args: [id],
+  });
+  const row = r.rows[0] as unknown as PersonRow | undefined;
   return row ? mapPerson(row) : undefined;
 }
 
-export function peopleByCompany(companyId: string): Person[] {
-  return (
-    db
-      .prepare("SELECT * FROM people WHERE company_id = ? ORDER BY last_name")
-      .all(companyId) as PersonRow[]
-  ).map(mapPerson);
+export async function peopleByCompany(companyId: string): Promise<Person[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM people WHERE company_id = ? ORDER BY last_name",
+    args: [companyId],
+  });
+  return (r.rows as unknown as PersonRow[]).map(mapPerson);
 }
 
 // ── Deals ────────────────────────────────────────────────────────────────────
 
-export function listDeals(): Deal[] {
-  return (
-    db
-      .prepare("SELECT * FROM deals ORDER BY stage, sort_index, created_at DESC")
-      .all() as DealRow[]
-  ).map(mapDeal);
+export async function listDeals(): Promise<Deal[]> {
+  const db = await getDb();
+  const r = await db.execute(
+    "SELECT * FROM deals ORDER BY stage, sort_index, created_at DESC",
+  );
+  return (r.rows as unknown as DealRow[]).map(mapDeal);
 }
 
-export function getDeal(id: string): Deal | undefined {
-  const row = db.prepare("SELECT * FROM deals WHERE id = ?").get(id) as
-    | DealRow
-    | undefined;
+export async function getDeal(id: string): Promise<Deal | undefined> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM deals WHERE id = ?",
+    args: [id],
+  });
+  const row = r.rows[0] as unknown as DealRow | undefined;
   return row ? mapDeal(row) : undefined;
 }
 
-export function dealsByCompany(companyId: string): Deal[] {
-  return (
-    db
-      .prepare("SELECT * FROM deals WHERE company_id = ? ORDER BY stage, value DESC")
-      .all(companyId) as DealRow[]
-  ).map(mapDeal);
+export async function dealsByCompany(companyId: string): Promise<Deal[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM deals WHERE company_id = ? ORDER BY stage, value DESC",
+    args: [companyId],
+  });
+  return (r.rows as unknown as DealRow[]).map(mapDeal);
 }
 
-export function dealsByPrimaryContact(personId: string): Deal[] {
-  return (
-    db
-      .prepare(
-        "SELECT * FROM deals WHERE primary_contact_id = ? ORDER BY stage, value DESC",
-      )
-      .all(personId) as DealRow[]
-  ).map(mapDeal);
+export async function dealsByPrimaryContact(personId: string): Promise<Deal[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM deals WHERE primary_contact_id = ? ORDER BY stage, value DESC",
+    args: [personId],
+  });
+  return (r.rows as unknown as DealRow[]).map(mapDeal);
 }
 
-export function dealsByContact(personId: string): Deal[] {
-  return (
-    db
-      .prepare(
-        `SELECT d.* FROM deals d
-         INNER JOIN deal_contacts dc ON dc.deal_id = d.id
-         WHERE dc.person_id = ?
-         ORDER BY d.stage, d.value DESC`,
-      )
-      .all(personId) as DealRow[]
-  ).map(mapDeal);
+export async function dealsByContact(personId: string): Promise<Deal[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: `SELECT d.* FROM deals d
+          INNER JOIN deal_contacts dc ON dc.deal_id = d.id
+          WHERE dc.person_id = ?
+          ORDER BY d.stage, d.value DESC`,
+    args: [personId],
+  });
+  return (r.rows as unknown as DealRow[]).map(mapDeal);
 }
 
-export function contactsForDeal(dealId: string): Person[] {
-  return (
-    db
-      .prepare(
-        `SELECT p.* FROM people p
-         INNER JOIN deal_contacts dc ON dc.person_id = p.id
-         WHERE dc.deal_id = ?
-         ORDER BY p.last_name`,
-      )
-      .all(dealId) as PersonRow[]
-  ).map(mapPerson);
+export async function contactsForDeal(dealId: string): Promise<Person[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: `SELECT p.* FROM people p
+          INNER JOIN deal_contacts dc ON dc.person_id = p.id
+          WHERE dc.deal_id = ?
+          ORDER BY p.last_name`,
+    args: [dealId],
+  });
+  return (r.rows as unknown as PersonRow[]).map(mapPerson);
 }
 
-export function allContactsForDeal(dealId: string): Person[] {
-  const deal = getDeal(dealId);
+export async function allContactsForDeal(dealId: string): Promise<Person[]> {
+  const deal = await getDeal(dealId);
   if (!deal) return [];
-  const extras = contactsForDeal(dealId);
+  const extras = await contactsForDeal(dealId);
   const all = [...extras];
   if (deal.primaryContactId && !all.some((p) => p.id === deal.primaryContactId)) {
-    const primary = getPerson(deal.primaryContactId);
+    const primary = await getPerson(deal.primaryContactId);
     if (primary) all.unshift(primary);
   } else if (deal.primaryContactId) {
     const i = all.findIndex((p) => p.id === deal.primaryContactId);
@@ -314,83 +322,88 @@ export function allContactsForDeal(dealId: string): Person[] {
 
 // ── Sequences ────────────────────────────────────────────────────────────────
 
-export function listSequences(): Sequence[] {
-  return (
-    db.prepare("SELECT * FROM sequences ORDER BY created_at DESC").all() as SequenceRow[]
-  ).map(mapSequence);
+export async function listSequences(): Promise<Sequence[]> {
+  const db = await getDb();
+  const r = await db.execute("SELECT * FROM sequences ORDER BY created_at DESC");
+  return (r.rows as unknown as SequenceRow[]).map(mapSequence);
 }
 
-export function getSequence(id: string): Sequence | undefined {
-  const row = db.prepare("SELECT * FROM sequences WHERE id = ?").get(id) as
-    | SequenceRow
-    | undefined;
+export async function getSequence(id: string): Promise<Sequence | undefined> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM sequences WHERE id = ?",
+    args: [id],
+  });
+  const row = r.rows[0] as unknown as SequenceRow | undefined;
   return row ? mapSequence(row) : undefined;
 }
 
-export function listSequenceSteps(sequenceId: string): SequenceStep[] {
-  return (
-    db
-      .prepare(
-        "SELECT * FROM sequence_steps WHERE sequence_id = ? ORDER BY step_number ASC",
-      )
-      .all(sequenceId) as SequenceStepRow[]
-  ).map(mapSequenceStep);
+export async function listSequenceSteps(sequenceId: string): Promise<SequenceStep[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM sequence_steps WHERE sequence_id = ? ORDER BY step_number ASC",
+    args: [sequenceId],
+  });
+  return (r.rows as unknown as SequenceStepRow[]).map(mapSequenceStep);
 }
 
 // ── Enrollments & Tasks ──────────────────────────────────────────────────────
 
-export function enrollmentsForPerson(personId: string): Enrollment[] {
-  return (
-    db
-      .prepare(
-        "SELECT * FROM enrollments WHERE person_id = ? ORDER BY enrolled_at DESC",
-      )
-      .all(personId) as EnrollmentRow[]
-  ).map(mapEnrollment);
+export async function enrollmentsForPerson(personId: string): Promise<Enrollment[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM enrollments WHERE person_id = ? ORDER BY enrolled_at DESC",
+    args: [personId],
+  });
+  return (r.rows as unknown as EnrollmentRow[]).map(mapEnrollment);
 }
 
-export function activeEnrollmentForPerson(personId: string): Enrollment | undefined {
-  const row = db
-    .prepare(
-      "SELECT * FROM enrollments WHERE person_id = ? AND status = 'active' LIMIT 1",
-    )
-    .get(personId) as EnrollmentRow | undefined;
+export async function activeEnrollmentForPerson(
+  personId: string,
+): Promise<Enrollment | undefined> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM enrollments WHERE person_id = ? AND status = 'active' LIMIT 1",
+    args: [personId],
+  });
+  const row = r.rows[0] as unknown as EnrollmentRow | undefined;
   return row ? mapEnrollment(row) : undefined;
 }
 
-export function enrollmentsForSequence(sequenceId: string): Enrollment[] {
-  return (
-    db
-      .prepare(
-        "SELECT * FROM enrollments WHERE sequence_id = ? ORDER BY enrolled_at DESC",
-      )
-      .all(sequenceId) as EnrollmentRow[]
-  ).map(mapEnrollment);
+export async function enrollmentsForSequence(sequenceId: string): Promise<Enrollment[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM enrollments WHERE sequence_id = ? ORDER BY enrolled_at DESC",
+    args: [sequenceId],
+  });
+  return (r.rows as unknown as EnrollmentRow[]).map(mapEnrollment);
 }
 
-export function tasksForEnrollment(enrollmentId: string): Task[] {
-  return (
-    db
-      .prepare(
-        "SELECT * FROM tasks WHERE enrollment_id = ? ORDER BY step_number ASC",
-      )
-      .all(enrollmentId) as TaskRow[]
-  ).map(mapTask);
+export async function tasksForEnrollment(enrollmentId: string): Promise<Task[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM tasks WHERE enrollment_id = ? ORDER BY step_number ASC",
+    args: [enrollmentId],
+  });
+  return (r.rows as unknown as TaskRow[]).map(mapTask);
 }
 
-export function getTask(id: string): Task | undefined {
-  const row = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as
-    | TaskRow
-    | undefined;
+export async function getTask(id: string): Promise<Task | undefined> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: "SELECT * FROM tasks WHERE id = ?",
+    args: [id],
+  });
+  const row = r.rows[0] as unknown as TaskRow | undefined;
   return row ? mapTask(row) : undefined;
 }
 
 // ── Scoring config ──────────────────────────────────────────────────────────
 
-export function getScoringConfig(): ScoringConfig {
-  const row = db.prepare("SELECT data FROM scoring_config WHERE id = 1").get() as
-    | { data: string }
-    | undefined;
+export async function getScoringConfig(): Promise<ScoringConfig> {
+  const db = await getDb();
+  const r = await db.execute("SELECT data FROM scoring_config WHERE id = 1");
+  const row = r.rows[0] as unknown as { data: string } | undefined;
   if (!row) return DEFAULT_SCORING_CONFIG;
   try {
     return JSON.parse(row.data) as ScoringConfig;

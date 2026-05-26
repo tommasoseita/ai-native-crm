@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { ScoringForm } from "@/components/ScoringForm";
 import { getScoringConfig } from "@/lib/queries";
 
-export default function ScoringPage() {
-  const config = getScoringConfig();
+export default async function ScoringPage() {
+  const config = await getScoringConfig();
   return (
     <>
       <TopBar title="Scoring rules" icon={<Sliders size={14} />} />

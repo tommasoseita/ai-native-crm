@@ -24,10 +24,12 @@ function greeting() {
 
 export default async function HomePage() {
   const sdr = await currentSdr();
-  const queue = getDailyQueue(sdr.id, todayISO());
-  const allDeals = listDeals();
-  const allPeople = listPeople();
-  const allCompanies = listCompanies();
+  const [queue, allDeals, allPeople, allCompanies] = await Promise.all([
+    getDailyQueue(sdr.id, todayISO()),
+    listDeals(),
+    listPeople(),
+    listCompanies(),
+  ]);
 
   const openDeals = allDeals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   const weighted = openDeals.reduce((sum, d) => sum + d.value * (d.probability / 100), 0);
@@ -35,6 +37,14 @@ export default async function HomePage() {
     .slice()
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
+
+  const recentDealCompanies = await Promise.all(
+    recentDeals.map(async (d) => ({
+      id: d.id,
+      company: d.companyId ? await getCompany(d.companyId) : undefined,
+    })),
+  );
+  const recentDealCompanyMap = new Map(recentDealCompanies.map((c) => [c.id, c.company]));
 
   return (
     <>
@@ -89,7 +99,7 @@ export default async function HomePage() {
           >
             <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
               {recentDeals.map((d, i) => {
-                const company = d.companyId ? getCompany(d.companyId) : undefined;
+                const company = recentDealCompanyMap.get(d.id);
                 return (
                   <Link
                     key={d.id}

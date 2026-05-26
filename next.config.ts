@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Native binding (.node) — must stay external, not bundled.
-  serverExternalPackages: ["better-sqlite3"],
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

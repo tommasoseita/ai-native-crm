@@ -19,13 +19,49 @@ import { todayISO } from "@/lib/utils";
 export default async function TodayPage() {
   const sdr = await currentSdr();
   const date = todayISO();
-  const queue = getDailyQueue(sdr.id, date);
-  const capInfo = enrollmentCapacity(sdr.id, date);
-  const suggestions = suggestEnrollments(sdr.id, date);
-  const sequences = listSequences();
+  const [queue, capInfo, suggestions, sequences] = await Promise.all([
+    getDailyQueue(sdr.id, date),
+    enrollmentCapacity(sdr.id, date),
+    suggestEnrollments(sdr.id, date),
+    listSequences(),
+  ]);
   const defaultSequence = sequences[0];
 
   const rampUp = queue.capacity.cap > 0 && queue.capacity.used + queue.capacity.pending < queue.capacity.cap * 0.6;
+
+  const overdueData = await Promise.all(
+    queue.overdue.map(async (t) => {
+      const person = await getPerson(t.personId);
+      const company = person?.companyId ? await getCompany(person.companyId) : undefined;
+      return { id: t.id, person, company };
+    }),
+  );
+  const overdueMap = new Map(overdueData.map((d) => [d.id, d]));
+
+  const dueTodayData = await Promise.all(
+    queue.dueToday.map(async (t) => {
+      const person = await getPerson(t.personId);
+      const company = person?.companyId ? await getCompany(person.companyId) : undefined;
+      return { id: t.id, person, company };
+    }),
+  );
+  const dueTodayMap = new Map(dueTodayData.map((d) => [d.id, d]));
+
+  const suggestionCompanies = await Promise.all(
+    suggestions.map(async ({ person }) => ({
+      id: person.id,
+      company: person.companyId ? await getCompany(person.companyId) : undefined,
+    })),
+  );
+  const suggestionCompanyMap = new Map(suggestionCompanies.map((c) => [c.id, c.company]));
+
+  const completedData = await Promise.all(
+    queue.completedToday.map(async (t) => {
+      const person = await getPerson(t.personId);
+      return { id: t.id, person };
+    }),
+  );
+  const completedMap = new Map(completedData.map((d) => [d.id, d]));
 
   return (
     <>
@@ -53,9 +89,10 @@ export default async function TodayPage() {
             <Panel title="Overdue" count={queue.overdue.length}>
               <ul className="divide-y divide-[var(--border)]">
                 {queue.overdue.map((t) => {
-                  const person = getPerson(t.personId);
+                  const data = overdueMap.get(t.id);
+                  const person = data?.person;
                   if (!person) return null;
-                  const company = person.companyId ? getCompany(person.companyId) : undefined;
+                  const company = data?.company;
                   return (
                     <li key={t.id}>
                       <TaskRow task={t} person={person} company={company} variant="overdue" />
@@ -72,9 +109,10 @@ export default async function TodayPage() {
             ) : (
               <ul className="divide-y divide-[var(--border)]">
                 {queue.dueToday.map((t) => {
-                  const person = getPerson(t.personId);
+                  const data = dueTodayMap.get(t.id);
+                  const person = data?.person;
                   if (!person) return null;
-                  const company = person.companyId ? getCompany(person.companyId) : undefined;
+                  const company = data?.company;
                   return (
                     <li key={t.id}>
                       <TaskRow task={t} person={person} company={company} />
@@ -100,7 +138,7 @@ export default async function TodayPage() {
               ) : (
                 <ul className="divide-y divide-[var(--border)]">
                   {suggestions.map(({ person, score }) => {
-                    const company = person.companyId ? getCompany(person.companyId) : undefined;
+                    const company = suggestionCompanyMap.get(person.id);
                     return (
                       <li
                         key={person.id}
@@ -143,7 +181,7 @@ export default async function TodayPage() {
             <Panel title="Completed today" count={queue.completedToday.length}>
               <ul className="divide-y divide-[var(--border)]">
                 {queue.completedToday.map((t) => {
-                  const person = getPerson(t.personId);
+                  const person = completedMap.get(t.id)?.person;
                   if (!person) return null;
                   return (
                     <li

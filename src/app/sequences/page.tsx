@@ -8,8 +8,18 @@ import { teamMemberById } from "@/lib/types";
 import { Avatar } from "@/components/Avatar";
 import { formatDate } from "@/lib/utils";
 
-export default function SequencesPage() {
-  const sequences = listSequences();
+export default async function SequencesPage() {
+  const sequences = await listSequences();
+  const stepsBySeq = new Map(
+    await Promise.all(
+      sequences.map(async (s) => [s.id, await listSequenceSteps(s.id)] as const),
+    ),
+  );
+  const enrollmentsBySeq = new Map(
+    await Promise.all(
+      sequences.map(async (s) => [s.id, await enrollmentsForSequence(s.id)] as const),
+    ),
+  );
 
   return (
     <>
@@ -35,8 +45,8 @@ export default function SequencesPage() {
           </thead>
           <tbody>
             {sequences.map((s) => {
-              const steps = listSequenceSteps(s.id);
-              const enrollments = enrollmentsForSequence(s.id);
+              const steps = stepsBySeq.get(s.id) ?? [];
+              const enrollments = enrollmentsBySeq.get(s.id) ?? [];
               const active = enrollments.filter((e) => e.status === "active").length;
               const owner = teamMemberById(s.ownerId);
               return (
