@@ -18,10 +18,21 @@ declare global {
 }
 
 function open() {
-  const dataDir = path.join(process.cwd(), "data");
-  fs.mkdirSync(dataDir, { recursive: true });
-  const db = new Database(path.join(dataDir, "crm.db"));
-  db.pragma("journal_mode = WAL");
+  // On Vercel/serverless, /var/task is read-only — only /tmp is writable.
+  // The DB is re-seeded on cold starts; this is acceptable for the demo.
+  const isServerless = !!process.env.VERCEL;
+  const dbPath = isServerless
+    ? "/tmp/crm.db"
+    : path.join(process.cwd(), "data", "crm.db");
+
+  if (!isServerless) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
+
+  const db = new Database(dbPath);
+  // WAL needs sidecar files on disk; not viable on Vercel's ephemeral /tmp
+  // across concurrent invocations. MEMORY journal keeps everything in RAM.
+  db.pragma(isServerless ? "journal_mode = MEMORY" : "journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
   migrate(db);
@@ -203,6 +214,6 @@ function seedIfEmpty(db: Database.Database) {
 }
 
 export const db = globalThis.__crmDb ?? open();
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__crmDb = db;
-}
+// Cache the connection on the global in every environment. On warm serverless
+// invocations this avoids re-running migrate/seed on every request.
+globalThis.__crmDb = db;
