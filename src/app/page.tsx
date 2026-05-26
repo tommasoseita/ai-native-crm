@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
-import { AIPromptBar } from "@/components/AIPromptBar";
+import { AIChat } from "@/components/AIChat";
 import { CapacityBadge } from "@/components/CapacityBadge";
 import { CompanyLogo } from "@/components/Avatar";
 import { Home as HomeIcon, CheckSquare } from "lucide-react";
@@ -45,7 +45,7 @@ export default async function HomePage() {
             {greeting()}, {sdr.name.split(" ")[0]}.
           </h1>
 
-          <AIPromptBar />
+          <AIChat />
 
           <Section
             title="Your queue today"
