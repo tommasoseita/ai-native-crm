@@ -9,6 +9,9 @@ import {
   Building,
   User,
   TrendingUp,
+  CheckSquare,
+  GitBranch,
+  Sliders,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +23,11 @@ type NavItem = {
 
 const mainNav: NavItem[] = [
   { label: "Home", href: "/", icon: <Home size={15} strokeWidth={1.75} /> },
+  {
+    label: "Today",
+    href: "/today",
+    icon: <CheckSquare size={15} strokeWidth={1.75} className="text-emerald-500" />,
+  },
 ];
 
 const records: NavItem[] = [
@@ -38,6 +46,19 @@ const records: NavItem[] = [
     href: "/pipeline",
     icon: <TrendingUp size={14} strokeWidth={1.75} className="text-orange-500" />,
   },
+  {
+    label: "Sequences",
+    href: "/sequences",
+    icon: <GitBranch size={14} strokeWidth={1.75} className="text-purple-500" />,
+  },
+];
+
+const settings: NavItem[] = [
+  {
+    label: "Scoring rules",
+    href: "/scoring",
+    icon: <Sliders size={14} strokeWidth={1.75} />,
+  },
 ];
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -54,6 +75,15 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       <span className="flex h-4 w-4 items-center justify-center shrink-0">{item.icon}</span>
       <span className="truncate">{item.label}</span>
     </Link>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-1 px-2 pt-4 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
+      <ChevronDown size={11} strokeWidth={2} className="opacity-60" />
+      <span>{label}</span>
+    </div>
   );
 }
 
@@ -92,12 +122,16 @@ export function Sidebar() {
           ))}
         </div>
 
-        <div className="flex items-center gap-1 px-2 pt-4 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
-          <ChevronDown size={11} strokeWidth={2} className="opacity-60" />
-          <span>Records</span>
-        </div>
+        <SectionHeader label="Records" />
         <div className="flex flex-col gap-0.5">
           {records.map((item) => (
+            <NavLink key={item.href} item={item} active={isActive(item.href)} />
+          ))}
+        </div>
+
+        <SectionHeader label="Settings" />
+        <div className="flex flex-col gap-0.5">
+          {settings.map((item) => (
             <NavLink key={item.href} item={item} active={isActive(item.href)} />
           ))}
         </div>

@@ -1,3 +1,5 @@
+import { DEFAULT_SCORING_CONFIG } from "./types";
+
 type CompanyRow = {
   id: string;
   name: string;
@@ -22,6 +24,7 @@ type PersonRow = {
   owner_id: string | null;
   linkedin: string | null;
   last_contacted_at: string | null;
+  last_engaged_at: string | null;
   created_at: string;
 };
 
@@ -53,20 +56,20 @@ export const SEED_COMPANIES: CompanyRow[] = [
 ];
 
 export const SEED_PEOPLE: PersonRow[] = [
-  { id: "p1", first_name: "Karri", last_name: "Saarinen", email: "karri@linear.app", phone: null, role: "CEO", company_id: "c1", owner_id: "u1", linkedin: null, last_contacted_at: "2026-05-20", created_at: "2026-01-12" },
-  { id: "p2", first_name: "Tuomas", last_name: "Artman", email: "tuomas@linear.app", phone: null, role: "CTO", company_id: "c1", owner_id: "u1", linkedin: null, last_contacted_at: "2026-04-18", created_at: "2026-01-12" },
-  { id: "p3", first_name: "Ivan", last_name: "Zhao", email: "ivan@notion.so", phone: null, role: "Co-founder & CEO", company_id: "c2", owner_id: "u2", linkedin: null, last_contacted_at: "2026-05-08", created_at: "2025-11-03" },
-  { id: "p4", first_name: "Akshay", last_name: "Kothari", email: "akshay@notion.so", phone: null, role: "COO", company_id: "c2", owner_id: "u2", linkedin: null, last_contacted_at: "2026-03-29", created_at: "2025-11-04" },
-  { id: "p5", first_name: "Guillermo", last_name: "Rauch", email: "guillermo@vercel.com", phone: null, role: "CEO", company_id: "c3", owner_id: "u1", linkedin: null, last_contacted_at: "2026-05-22", created_at: "2025-09-21" },
-  { id: "p6", first_name: "Patrick", last_name: "Collison", email: "patrick@stripe.com", phone: null, role: "CEO", company_id: "c4", owner_id: "u3", linkedin: null, last_contacted_at: "2026-02-14", created_at: "2025-06-14" },
-  { id: "p7", first_name: "Dylan", last_name: "Field", email: "dylan@figma.com", phone: null, role: "Co-founder & CEO", company_id: "c5", owner_id: "u2", linkedin: null, last_contacted_at: "2026-04-30", created_at: "2025-04-02" },
-  { id: "p8", first_name: "Joe", last_name: "Thomas", email: "joe@loom.com", phone: null, role: "Co-founder", company_id: "c6", owner_id: "u4", linkedin: null, last_contacted_at: "2026-01-05", created_at: "2025-03-10" },
-  { id: "p9", first_name: "Christian", last_name: "Reber", email: "christian@pitch.com", phone: null, role: "CEO", company_id: "c7", owner_id: "u3", linkedin: null, last_contacted_at: "2026-05-15", created_at: "2025-02-19" },
-  { id: "p10", first_name: "Thomas", last_name: "Paul Mann", email: "thomas@raycast.com", phone: null, role: "Co-founder", company_id: "c8", owner_id: "u1", linkedin: null, last_contacted_at: "2026-05-21", created_at: "2025-01-30" },
-  { id: "p11", first_name: "Josh", last_name: "Miller", email: "josh@arc.net", phone: null, role: "CEO", company_id: "c9", owner_id: "u4", linkedin: null, last_contacted_at: "2025-12-19", created_at: "2024-12-05" },
-  { id: "p12", first_name: "Arthur", last_name: "Mensch", email: "arthur@mistral.ai", phone: null, role: "CEO", company_id: "c10", owner_id: "u2", linkedin: null, last_contacted_at: "2026-05-23", created_at: "2024-11-22" },
-  { id: "p13", first_name: "Cam", last_name: "Adams", email: "cam@linear.app", phone: null, role: "Co-founder", company_id: "c1", owner_id: "u1", linkedin: null, last_contacted_at: "2026-04-02", created_at: "2026-01-12" },
-  { id: "p14", first_name: "John", last_name: "Collison", email: "john@stripe.com", phone: null, role: "President", company_id: "c4", owner_id: "u3", linkedin: null, last_contacted_at: "2026-03-11", created_at: "2025-06-14" },
+  { id: "p1", first_name: "Karri", last_name: "Saarinen", email: "karri@linear.app", phone: null, role: "CEO", company_id: "c1", owner_id: "u1", linkedin: null, last_contacted_at: "2026-05-20", last_engaged_at: "2026-05-15", created_at: "2026-01-12" },
+  { id: "p2", first_name: "Tuomas", last_name: "Artman", email: "tuomas@linear.app", phone: null, role: "CTO", company_id: "c1", owner_id: "u1", linkedin: null, last_contacted_at: "2026-04-18", last_engaged_at: null, created_at: "2026-01-12" },
+  { id: "p3", first_name: "Ivan", last_name: "Zhao", email: "ivan@notion.so", phone: null, role: "Co-founder & CEO", company_id: "c2", owner_id: "u2", linkedin: null, last_contacted_at: "2026-05-08", last_engaged_at: "2026-05-20", created_at: "2025-11-03" },
+  { id: "p4", first_name: "Akshay", last_name: "Kothari", email: "akshay@notion.so", phone: null, role: "COO", company_id: "c2", owner_id: "u2", linkedin: null, last_contacted_at: "2026-03-29", last_engaged_at: null, created_at: "2025-11-04" },
+  { id: "p5", first_name: "Guillermo", last_name: "Rauch", email: "guillermo@vercel.com", phone: null, role: "CEO", company_id: "c3", owner_id: "u1", linkedin: null, last_contacted_at: "2026-05-22", last_engaged_at: "2026-05-12", created_at: "2025-09-21" },
+  { id: "p6", first_name: "Patrick", last_name: "Collison", email: "patrick@stripe.com", phone: null, role: "CEO", company_id: "c4", owner_id: "u3", linkedin: null, last_contacted_at: "2026-02-14", last_engaged_at: "2026-05-22", created_at: "2025-06-14" },
+  { id: "p7", first_name: "Dylan", last_name: "Field", email: "dylan@figma.com", phone: null, role: "Co-founder & CEO", company_id: "c5", owner_id: "u2", linkedin: null, last_contacted_at: "2026-04-30", last_engaged_at: null, created_at: "2025-04-02" },
+  { id: "p8", first_name: "Joe", last_name: "Thomas", email: "joe@loom.com", phone: null, role: "Co-founder", company_id: "c6", owner_id: "u4", linkedin: null, last_contacted_at: "2026-01-05", last_engaged_at: null, created_at: "2025-03-10" },
+  { id: "p9", first_name: "Christian", last_name: "Reber", email: "christian@pitch.com", phone: null, role: "CEO", company_id: "c7", owner_id: "u3", linkedin: null, last_contacted_at: "2026-05-15", last_engaged_at: "2026-05-17", created_at: "2025-02-19" },
+  { id: "p10", first_name: "Thomas", last_name: "Paul Mann", email: "thomas@raycast.com", phone: null, role: "Co-founder", company_id: "c8", owner_id: "u1", linkedin: null, last_contacted_at: "2026-05-21", last_engaged_at: null, created_at: "2025-01-30" },
+  { id: "p11", first_name: "Josh", last_name: "Miller", email: "josh@arc.net", phone: null, role: "CEO", company_id: "c9", owner_id: "u4", linkedin: null, last_contacted_at: "2025-12-19", last_engaged_at: "2026-05-23", created_at: "2024-12-05" },
+  { id: "p12", first_name: "Arthur", last_name: "Mensch", email: "arthur@mistral.ai", phone: null, role: "CEO", company_id: "c10", owner_id: "u2", linkedin: null, last_contacted_at: "2026-05-23", last_engaged_at: "2026-05-23", created_at: "2024-11-22" },
+  { id: "p13", first_name: "Cam", last_name: "Adams", email: "cam@linear.app", phone: null, role: "Co-founder", company_id: "c1", owner_id: "u1", linkedin: null, last_contacted_at: "2026-04-02", last_engaged_at: null, created_at: "2026-01-12" },
+  { id: "p14", first_name: "John", last_name: "Collison", email: "john@stripe.com", phone: null, role: "President", company_id: "c4", owner_id: "u3", linkedin: null, last_contacted_at: "2026-03-11", last_engaged_at: null, created_at: "2025-06-14" },
 ];
 
 export const SEED_DEALS: DealRow[] = [
@@ -83,10 +86,138 @@ export const SEED_DEALS: DealRow[] = [
   { id: "d11", name: "Linear — Onboarding success plan", value: 22000, currency: "EUR", stage: "lost", company_id: "c1", primary_contact_id: "p13", owner_id: "u1", expected_close_date: "2026-04-30", probability: 0, created_at: "2026-02-22" },
 ];
 
-// (dealId, personId) — additional contacts beyond the primary one
 export const SEED_DEAL_CONTACTS: [string, string][] = [
   ["d1", "p2"],
   ["d1", "p13"],
   ["d2", "p4"],
   ["d4", "p14"],
 ];
+
+// ── Cadence seeds ────────────────────────────────────────────────────────────
+
+export const SEED_SEQUENCE = {
+  id: "seq_cold_call_6",
+  name: "Cold call cadence (6 touches)",
+  description: "Six call attempts spaced over ~3 weeks. Days 0, 2, 5, 9, 14, 20.",
+  owner_id: "u1",
+  created_at: "2026-04-01",
+};
+
+const STEP_OFFSETS = [0, 2, 5, 9, 14, 20];
+
+export const SEED_SEQUENCE_STEPS = STEP_OFFSETS.map((offset, i) => ({
+  id: `step_${i + 1}`,
+  sequence_id: SEED_SEQUENCE.id,
+  step_number: i + 1,
+  day_offset: offset,
+  channel: "call",
+}));
+
+// Build enrollments + their tasks in one go. Today is 2026-05-25.
+// daysAgo describes when the enrollment started.
+// Each enrollment generates all 6 tasks; we mark earlier steps as completed
+// up to currentStepIndex (0-based), the current step is pending (the "due today" task),
+// the rest are pending future tasks.
+
+type EnrollmentSpec = {
+  id: string;
+  personId: string;
+  sdrId: string;
+  daysAgo: number;
+  // For tasks already completed, optionally an outcome (defaults to "no_answer").
+  completedOutcomes?: string[];
+};
+
+const TODAY = "2026-05-25";
+
+function addDays(iso: string, days: number) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+const ENROLLMENT_SPECS: EnrollmentSpec[] = [
+  // u1 — fills up Tommaso's queue with multiple stages of the cadence
+  { id: "enr_1", personId: "p1", sdrId: "u1", daysAgo: 0 },
+  { id: "enr_2", personId: "p2", sdrId: "u1", daysAgo: 2, completedOutcomes: ["no_answer"] },
+  { id: "enr_3", personId: "p5", sdrId: "u1", daysAgo: 5, completedOutcomes: ["no_answer", "voicemail"] },
+  { id: "enr_4", personId: "p10", sdrId: "u1", daysAgo: 9, completedOutcomes: ["voicemail", "no_answer", "connected"] },
+  // overdue: enrolled 3 days ago, step 2 (offset 2) was due yesterday and never completed
+  { id: "enr_5", personId: "p13", sdrId: "u1", daysAgo: 3, completedOutcomes: ["no_answer"] },
+
+  // u2 Davide
+  { id: "enr_6", personId: "p3", sdrId: "u2", daysAgo: 2, completedOutcomes: ["no_answer"] },
+  { id: "enr_7", personId: "p7", sdrId: "u2", daysAgo: 0 },
+  { id: "enr_8", personId: "p4", sdrId: "u2", daysAgo: 5, completedOutcomes: ["no_answer", "no_answer"] },
+
+  // u3 Giulia
+  { id: "enr_9", personId: "p6", sdrId: "u3", daysAgo: 5, completedOutcomes: ["voicemail", "no_answer"] },
+  { id: "enr_10", personId: "p9", sdrId: "u3", daysAgo: 2, completedOutcomes: ["no_answer"] },
+
+  // u4 Marco
+  { id: "enr_11", personId: "p8", sdrId: "u4", daysAgo: 0 },
+];
+
+type EnrollmentRow = {
+  id: string;
+  sequence_id: string;
+  person_id: string;
+  sdr_id: string;
+  status: string;
+  exit_reason: string | null;
+  enrolled_at: string;
+  completed_at: string | null;
+};
+
+type TaskRow = {
+  id: string;
+  enrollment_id: string;
+  person_id: string;
+  sdr_id: string;
+  step_number: number;
+  channel: string;
+  due_date: string;
+  status: string;
+  outcome: string | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
+export const SEED_ENROLLMENTS: EnrollmentRow[] = [];
+export const SEED_TASKS: TaskRow[] = [];
+
+for (const spec of ENROLLMENT_SPECS) {
+  const enrolledAt = addDays(TODAY, -spec.daysAgo);
+  SEED_ENROLLMENTS.push({
+    id: spec.id,
+    sequence_id: SEED_SEQUENCE.id,
+    person_id: spec.personId,
+    sdr_id: spec.sdrId,
+    status: "active",
+    exit_reason: null,
+    enrolled_at: enrolledAt,
+    completed_at: null,
+  });
+
+  STEP_OFFSETS.forEach((offset, i) => {
+    const stepNumber = i + 1;
+    const dueDate = addDays(enrolledAt, offset);
+    const completedOutcome = spec.completedOutcomes?.[i];
+    const isCompleted = !!completedOutcome;
+    SEED_TASKS.push({
+      id: `${spec.id}_t${stepNumber}`,
+      enrollment_id: spec.id,
+      person_id: spec.personId,
+      sdr_id: spec.sdrId,
+      step_number: stepNumber,
+      channel: "call",
+      due_date: dueDate,
+      status: isCompleted ? "completed" : "pending",
+      outcome: isCompleted ? completedOutcome : null,
+      completed_at: isCompleted ? dueDate : null,
+      created_at: enrolledAt,
+    });
+  });
+}
+
+export const SEED_SCORING_CONFIG_JSON = JSON.stringify(DEFAULT_SCORING_CONFIG);

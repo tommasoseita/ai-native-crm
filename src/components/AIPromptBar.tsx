@@ -4,10 +4,10 @@ import { useState } from "react";
 import { ArrowUp, Slash } from "lucide-react";
 
 const SUGGESTIONS = [
-  "Show me deals closing this month",
-  "Which contacts haven't been emailed in 30 days?",
-  "Summarize today's pipeline movement",
-  "Draft a follow-up to my biggest open deal",
+  "How many contacts should I enroll today?",
+  "Who should I call first?",
+  "Which contacts haven't replied after 4 touches?",
+  "Forecast my pipeline if every open deal closes at 70%",
 ];
 
 export function AIPromptBar() {

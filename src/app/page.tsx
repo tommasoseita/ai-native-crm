@@ -1,22 +1,30 @@
 import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { AIPromptBar } from "@/components/AIPromptBar";
-import { CompanyLogo, Avatar } from "@/components/Avatar";
-import { Home as HomeIcon } from "lucide-react";
-import { listCompanies, listDeals, listPeople, getCompany } from "@/lib/queries";
-import { formatCurrency, formatDate, relativeTime } from "@/lib/utils";
-import { STAGE_LABELS, teamMemberById } from "@/lib/types";
-
-const TODAY = new Date("2026-05-25T14:30:00");
+import { CapacityBadge } from "@/components/CapacityBadge";
+import { CompanyLogo } from "@/components/Avatar";
+import { Home as HomeIcon, CheckSquare } from "lucide-react";
+import {
+  listCompanies,
+  listDeals,
+  listPeople,
+  getCompany,
+} from "@/lib/queries";
+import { getDailyQueue } from "@/lib/cadence";
+import { currentSdr } from "@/lib/viewAs";
+import { formatCurrency, formatDate, today, todayISO } from "@/lib/utils";
+import { STAGE_LABELS } from "@/lib/types";
 
 function greeting() {
-  const h = TODAY.getHours();
+  const h = today().getHours();
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const sdr = await currentSdr();
+  const queue = getDailyQueue(sdr.id, todayISO());
   const allDeals = listDeals();
   const allPeople = listPeople();
   const allCompanies = listCompanies();
@@ -28,25 +36,41 @@ export default function HomePage() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  const recentlyContacted = allPeople
-    .filter((p) => p.lastContactedAt)
-    .sort((a, b) =>
-      (b.lastContactedAt || "").localeCompare(a.lastContactedAt || ""),
-    )
-    .slice(0, 5);
-
   return (
     <>
       <TopBar title="Home" icon={<HomeIcon size={14} />} />
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="mx-auto max-w-3xl px-6 py-10">
           <h1 className="mb-6 text-center text-[26px] font-semibold tracking-tight">
-            {greeting()}, Tommaso.
+            {greeting()}, {sdr.name.split(" ")[0]}.
           </h1>
 
           <AIPromptBar />
 
-          <div className="mt-12 grid grid-cols-3 gap-3">
+          <Section
+            title="Your queue today"
+            right={
+              <Link
+                href="/today"
+                className="inline-flex items-center gap-1 text-[12px] text-[var(--muted-foreground)] hover:underline"
+              >
+                <CheckSquare size={11} />
+                Open daily queue
+              </Link>
+            }
+          >
+            <CapacityBadge {...queue.capacity} />
+            <div className="mt-2 text-[12px] text-[var(--muted-foreground)]">
+              {queue.overdue.length > 0 && (
+                <span className="text-red-600">
+                  {queue.overdue.length} overdue ·{" "}
+                </span>
+              )}
+              {queue.dueToday.length} due today · {queue.completedToday.length} completed
+            </div>
+          </Section>
+
+          <div className="mt-10 grid grid-cols-3 gap-3">
             <Stat label="Pipeline (weighted)" value={formatCurrency(weighted)} />
             <Stat label="Companies" value={allCompanies.length.toString()} />
             <Stat label="Contacts" value={allPeople.length.toString()} />
@@ -75,7 +99,11 @@ export default function HomePage() {
                     }`}
                   >
                     {company && (
-                      <CompanyLogo name={company.name} domain={company.domain ?? undefined} size="xs" />
+                      <CompanyLogo
+                        name={company.name}
+                        domain={company.domain ?? undefined}
+                        size="xs"
+                      />
                     )}
                     <span className="font-medium truncate">{d.name}</span>
                     <span className="ml-auto flex items-center gap-3 text-[12px] text-[var(--muted-foreground)]">
@@ -86,49 +114,6 @@ export default function HomePage() {
                         {formatCurrency(d.value, d.currency)}
                       </span>
                       <span>{formatDate(d.expectedCloseDate)}</span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </Section>
-
-          <Section
-            title="Recently contacted"
-            right={
-              <Link
-                href="/people"
-                className="text-[12px] text-[var(--muted-foreground)] hover:underline"
-              >
-                View all
-              </Link>
-            }
-          >
-            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
-              {recentlyContacted.map((p, i) => {
-                const company = p.companyId ? getCompany(p.companyId) : undefined;
-                const owner = teamMemberById(p.ownerId);
-                return (
-                  <Link
-                    key={p.id}
-                    href={`/people/${p.id}`}
-                    className={`flex items-center gap-3 px-4 py-2.5 text-[13px] hover:bg-[var(--sidebar-hover)] ${
-                      i !== recentlyContacted.length - 1
-                        ? "border-b border-[var(--border)]"
-                        : ""
-                    }`}
-                  >
-                    <Avatar name={`${p.firstName} ${p.lastName}`} />
-                    <span className="font-medium">
-                      {p.firstName} {p.lastName}
-                    </span>
-                    {p.role && (
-                      <span className="text-[12px] text-[var(--muted)]">· {p.role}</span>
-                    )}
-                    <span className="ml-auto flex items-center gap-3 text-[12px] text-[var(--muted-foreground)]">
-                      {company && <span>{company.name}</span>}
-                      <span>{relativeTime(p.lastContactedAt, TODAY)}</span>
-                      {owner && <Avatar name={owner.name} color={owner.color} size="xs" />}
                     </span>
                   </Link>
                 );

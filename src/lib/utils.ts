@@ -4,6 +4,18 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
+/**
+ * Single source of truth for "now". Hardcoded to demo date so the seed and the
+ * UI are consistent.
+ */
+export function today(): Date {
+  return new Date("2026-05-25T14:30:00Z");
+}
+
+export function todayISO(): string {
+  return today().toISOString().slice(0, 10);
+}
+
 export function formatCurrency(amount: number, currency: "EUR" | "USD" = "EUR") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -25,8 +37,12 @@ export function formatDate(iso?: string | null) {
 export function relativeTime(iso?: string | null, today = new Date()) {
   if (!iso) return "Never";
   const d = new Date(iso);
-  const diff = Math.round((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff === 0) return "Today";
+  // Normalize both to UTC midnight so a same-day comparison returns 0
+  // regardless of the hour-of-day attached to either timestamp.
+  const a = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const b = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const diff = Math.round((a - b) / (1000 * 60 * 60 * 24));
+  if (diff <= 0) return "Today";
   if (diff === 1) return "Yesterday";
   if (diff < 7) return `${diff} days ago`;
   if (diff < 30) return `${Math.round(diff / 7)} weeks ago`;

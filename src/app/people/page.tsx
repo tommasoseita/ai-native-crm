@@ -4,16 +4,25 @@ import { PageHeader } from "@/components/PageHeader";
 import { ViewToolbar } from "@/components/ViewToolbar";
 import { Avatar, CompanyLogo } from "@/components/Avatar";
 import { NewPersonButton } from "@/components/NewPersonButton";
-import { listPeople, listCompanies, getCompany } from "@/lib/queries";
+import { ScoreBadge } from "@/components/ScoreBadge";
+import { listPeople, listCompanies, getScoringConfig } from "@/lib/queries";
+import { scoreMany } from "@/lib/scoring";
 import { teamMemberById } from "@/lib/types";
-import { relativeTime } from "@/lib/utils";
+import { relativeTime, today } from "@/lib/utils";
 import { User, Mail } from "lucide-react";
-
-const TODAY = new Date("2026-05-25");
 
 export default function PeoplePage() {
   const people = listPeople();
   const companies = listCompanies();
+  const companyMap = new Map(companies.map((c) => [c.id, c]));
+  const config = getScoringConfig();
+  const scores = scoreMany(people, companyMap, config, today());
+
+  const sorted = [...people].sort((a, b) => {
+    const sa = scores.get(a.id)?.score ?? 0;
+    const sb = scores.get(b.id)?.score ?? 0;
+    return sb - sa;
+  });
 
   return (
     <>
@@ -22,7 +31,7 @@ export default function PeoplePage() {
         icon={<User size={14} className="text-sky-500" />}
         title="Contacts"
         count={people.length}
-        description="All contacts across your workspace"
+        description="All contacts across your workspace, sorted by lead score"
         action={<NewPersonButton companies={companies} />}
       />
       <ViewToolbar views={["table", "board"]} activeView="table" />
@@ -33,6 +42,7 @@ export default function PeoplePage() {
               <th className="w-8 px-3 py-2">
                 <input type="checkbox" className="cursor-pointer" />
               </th>
+              <Th>Tier</Th>
               <Th>Name</Th>
               <Th>Role</Th>
               <Th>Company</Th>
@@ -42,9 +52,10 @@ export default function PeoplePage() {
             </tr>
           </thead>
           <tbody>
-            {people.map((p) => {
-              const company = p.companyId ? getCompany(p.companyId) : undefined;
+            {sorted.map((p) => {
+              const company = p.companyId ? companyMap.get(p.companyId) : undefined;
               const owner = teamMemberById(p.ownerId);
+              const score = scores.get(p.id);
               return (
                 <tr
                   key={p.id}
@@ -56,6 +67,7 @@ export default function PeoplePage() {
                       className="cursor-pointer opacity-0 group-hover:opacity-100"
                     />
                   </td>
+                  <Td>{score && <ScoreBadge score={score} />}</Td>
                   <Td>
                     <Link
                       href={`/people/${p.id}`}
@@ -76,7 +88,11 @@ export default function PeoplePage() {
                         href={`/companies/${company.id}`}
                         className="flex items-center gap-2 hover:underline"
                       >
-                        <CompanyLogo name={company.name} domain={company.domain ?? undefined} size="xs" />
+                        <CompanyLogo
+                          name={company.name}
+                          domain={company.domain ?? undefined}
+                          size="xs"
+                        />
                         <span>{company.name}</span>
                       </Link>
                     ) : (
@@ -94,7 +110,7 @@ export default function PeoplePage() {
                   </Td>
                   <Td>
                     <span className="text-[var(--muted-foreground)]">
-                      {relativeTime(p.lastContactedAt ?? undefined, TODAY)}
+                      {relativeTime(p.lastContactedAt ?? undefined, today())}
                     </span>
                   </Td>
                   <Td>
