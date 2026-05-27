@@ -1,4 +1,5 @@
 import "server-only";
+import { mkdirSync } from "node:fs";
 import { createClient, type Client } from "@libsql/client";
 import {
   SEED_COMPANIES,
@@ -18,9 +19,26 @@ declare global {
 }
 
 function createDbClient(): Client {
-  const url = process.env.TURSO_DATABASE_URL ?? "file:./data/crm.db";
+  const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
-  return createClient({ url, authToken });
+
+  if (url) {
+    return createClient({ url, authToken });
+  }
+
+  // No Turso URL: fall back to a local SQLite file. This is fine for local
+  // dev, but the serverless filesystem is ephemeral — refuse to start on a
+  // hosted deployment so we never silently lose data to a per-Lambda file.
+  if (process.env.VERCEL) {
+    throw new Error(
+      "TURSO_DATABASE_URL is not set. A persistent libSQL/Turso database is required in production; " +
+        "the local file fallback is ephemeral on serverless. Set TURSO_DATABASE_URL and " +
+        "TURSO_AUTH_TOKEN in your Vercel project settings.",
+    );
+  }
+
+  mkdirSync("./data", { recursive: true });
+  return createClient({ url: "file:./data/crm.db" });
 }
 
 const DDL = `

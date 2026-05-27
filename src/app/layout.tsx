@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   description: "An AI-native CRM for ambitious teams.",
 };
 
+// Every page reads live data from the database at request time, so there is
+// nothing to prerender at build. force-dynamic keeps the build from touching
+// the DB and ensures each request sees fresh data.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
