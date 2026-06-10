@@ -10,9 +10,9 @@ export const maxDuration = 60;
 
 /**
  * Aircall polling endpoint. Called by Vercel Cron on the schedule in
- * vercel.json (daily on Hobby, because Hobby caps cron granularity at
- * one-per-day; bump to a 5-minute schedule once on Pro). Also callable
- * by an admin from the browser for an immediate refresh between ticks.
+ * vercel.json (every 3 minutes on Pro; Hobby caps granularity at daily
+ * which would lag the CRM too much). Also callable by an admin from
+ * the browser for an immediate refresh between ticks.
  *
  * Auth: either the Vercel-Cron header (set automatically when the
  * scheduler triggers the route) or an admin session.
