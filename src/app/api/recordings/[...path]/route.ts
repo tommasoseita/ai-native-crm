@@ -46,6 +46,22 @@ export async function GET(
 
   try {
     const blob = await head(pathname);
+
+    // Admin diagnostic: `?diag=1` returns the Blob metadata as JSON instead
+    // of redirecting, so we can confirm the mp3 actually has bytes when a
+    // player misbehaves. No-op for non-admins.
+    const url = new URL(_req.url);
+    if (url.searchParams.get("diag") === "1" && user.role === "admin") {
+      return NextResponse.json({
+        pathname: blob.pathname,
+        size: blob.size,
+        contentType: blob.contentType,
+        contentDisposition: blob.contentDisposition,
+        uploadedAt: blob.uploadedAt,
+        url: blob.url,
+      });
+    }
+
     // `url` is the inline-streamable signed URL; the player just follows
     // the 302 and gets bytes directly from Vercel Blob's edge.
     return NextResponse.redirect(blob.url, 302);
