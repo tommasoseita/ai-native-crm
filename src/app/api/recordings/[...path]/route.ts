@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { head } from "@vercel/blob";
+import { get, head } from "@vercel/blob";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
@@ -7,19 +7,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Serves a call recording from the private Blob store. The audio player
- * in the UI hits this URL, we re-check the user's authorisation against
- * the `calls.recording_url` pathname, then 302-redirect to a freshly-
- * minted signed URL from `head(pathname)`.
+ * Serves a call recording from the private Blob store. The Blob URL
+ * returned by `head()` on a private/OIDC store is NOT a publicly-
+ * accessible signed URL — accessing it from a browser without the
+ * server's OIDC token returns 401. So instead of 302-ing to it, we
+ * stream the bytes through this endpoint, with auth applied here.
  *
- * Authorization rule: any signed-in user can play a recording of a call
- * they were the SDR on; admins can play any. Non-admins playing a call
- * with no `sdr_id` attribution (because the mapping was missing at sync
- * time) are denied — they can still ask an admin to map them and the
- * next sync will backfill.
+ * Authorization: any signed-in user can play a recording of a call
+ * they were the SDR on; admins can play any. Non-admins playing a
+ * call with no `sdr_id` attribution are denied — they can ask the
+ * admin to map them and the next sync will backfill.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ path: string[] }> },
 ) {
   const user = await getCurrentUser();
@@ -39,34 +39,45 @@ export async function GET(
   if (!row) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
-
   if (user.role !== "admin" && row.sdr_id !== user.id) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  try {
-    const blob = await head(pathname);
-
-    // Admin diagnostic: `?diag=1` returns the Blob metadata as JSON instead
-    // of redirecting, so we can confirm the mp3 actually has bytes when a
-    // player misbehaves. No-op for non-admins.
-    const url = new URL(_req.url);
-    if (url.searchParams.get("diag") === "1" && user.role === "admin") {
+  // Admin diagnostic: `?diag=1` returns Blob metadata as JSON. Kept for
+  // future debugging; no-op for non-admins.
+  const url = new URL(req.url);
+  if (url.searchParams.get("diag") === "1" && user.role === "admin") {
+    try {
+      const meta = await head(pathname);
       return NextResponse.json({
-        pathname: blob.pathname,
-        size: blob.size,
-        contentType: blob.contentType,
-        contentDisposition: blob.contentDisposition,
-        uploadedAt: blob.uploadedAt,
-        url: blob.url,
+        pathname: meta.pathname,
+        size: meta.size,
+        contentType: meta.contentType,
+        contentDisposition: meta.contentDisposition,
+        uploadedAt: meta.uploadedAt,
       });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "head failed";
+      return NextResponse.json({ error: reason }, { status: 500 });
     }
+  }
 
-    // `url` is the inline-streamable signed URL; the player just follows
-    // the 302 and gets bytes directly from Vercel Blob's edge.
-    return NextResponse.redirect(blob.url, 302);
+  try {
+    const result = await get(pathname, { access: "private" });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      return NextResponse.json({ error: "not found" }, { status: 404 });
+    }
+    return new Response(result.stream, {
+      status: 200,
+      headers: {
+        "Content-Type": result.blob.contentType || "audio/mpeg",
+        "Content-Length": String(result.blob.size),
+        "Cache-Control": "private, max-age=300",
+        "Content-Disposition": "inline",
+      },
+    });
   } catch (err) {
-    console.error("[recordings] head() failed", pathname, err);
-    return NextResponse.json({ error: "blob lookup failed" }, { status: 500 });
+    console.error("[recordings] get() failed", pathname, err);
+    return NextResponse.json({ error: "blob fetch failed" }, { status: 500 });
   }
 }
