@@ -4,9 +4,10 @@ import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Pull-and-upload-recordings can take >10s on a busy workspace. Vercel's
-// hobby tier caps at 60s; pro lifts to 300. We aim for 60.
-export const maxDuration = 60;
+// Pulling a single recording is a roundtrip to Aircall's S3 + an upload to
+// Vercel Blob — ~2-3s each. With a backlog of unsynced calls a tick can
+// easily blow past 60s, so we use the Pro ceiling.
+export const maxDuration = 300;
 
 /**
  * Aircall polling endpoint. Called by Vercel Cron on the schedule in

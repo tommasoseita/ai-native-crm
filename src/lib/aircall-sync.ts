@@ -112,7 +112,12 @@ export async function syncRecentCalls(): Promise<SyncResult> {
               args: [permanent, c.id],
             });
             recordingsStored++;
-          } catch {
+          } catch (err) {
+            const reason = err instanceof Error ? err.message : String(err);
+            console.error(
+              "[aircall sync] recording upload failed",
+              { aircallCallId: c.id, reason },
+            );
             await db.execute({
               sql: "UPDATE calls SET recording_status = 'failed' WHERE aircall_call_id = ?",
               args: [c.id],
