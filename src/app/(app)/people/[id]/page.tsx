@@ -18,6 +18,7 @@ import {
 } from "@/lib/queries";
 import { listUsers } from "@/lib/auth";
 import { CallList } from "@/components/CallList";
+import { CallButton } from "@/components/CallButton";
 import { scorePerson } from "@/lib/scoring";
 import { teamMemberById } from "@/lib/types";
 import { Avatar, CompanyLogo } from "@/components/Avatar";
@@ -121,6 +122,18 @@ export default async function PersonDetailPage({
         }
         actions={
           <>
+            {person.phone && (
+              <CallButton
+                phone={person.phone}
+                contact={{
+                  name: `${person.firstName} ${person.lastName}`,
+                  company: company?.name,
+                  href: `/people/${person.id}`,
+                }}
+                variant="primary"
+                label="Call"
+              />
+            )}
             {!activeEnr && defaultSequence && (
               <EnrollButton
                 personId={person.id}
@@ -157,12 +170,16 @@ export default async function PersonDetailPage({
                   </Prop>
                   <Prop label="Phone">
                     {person.phone ? (
-                      <a
-                        href={`tel:${person.phone}`}
-                        className="inline-flex items-center gap-1 hover:text-[var(--accent)]"
-                      >
-                        <Phone size={11} /> {person.phone}
-                      </a>
+                      <CallButton
+                        phone={person.phone}
+                        contact={{
+                          name: `${person.firstName} ${person.lastName}`,
+                          company: company?.name,
+                          href: `/people/${person.id}`,
+                        }}
+                        variant="link"
+                        label={person.phone}
+                      />
                     ) : (
                       "—"
                     )}

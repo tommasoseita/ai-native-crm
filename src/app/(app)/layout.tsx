@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
+import { AircallDialerProvider } from "@/components/AircallDialer";
 import { requireUser } from "@/lib/auth";
 
 export default async function AppLayout({
@@ -13,12 +14,14 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
-      <div className="flex h-full">
-        <Sidebar user={{ name: user.name, email: user.email, role: user.role }} />
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {children}
-        </main>
-      </div>
+      <AircallDialerProvider>
+        <div className="flex h-full">
+          <Sidebar user={{ name: user.name, email: user.email, role: user.role }} />
+          <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {children}
+          </main>
+        </div>
+      </AircallDialerProvider>
     </ToastProvider>
   );
 }

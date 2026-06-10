@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Phone, ChevronDown, SkipForward, Check } from "lucide-react";
 import { Avatar, CompanyLogo } from "./Avatar";
+import { CallButton } from "./CallButton";
 import { completeTask, skipTask } from "@/lib/actions";
 import {
   OUTCOME_LABELS,
@@ -75,6 +76,17 @@ export function TaskRow({
           {variant === "overdue" ? "due " : ""}
           {task.dueDate}
         </span>
+        {task.channel === "call" && person.phone && (
+          <CallButton
+            phone={person.phone}
+            contact={{
+              name: `${person.firstName} ${person.lastName}`,
+              company: company?.name,
+              href: `/people/${person.id}`,
+            }}
+            variant="icon"
+          />
+        )}
         <div className="relative">
           <button
             onClick={() => setOpen((o) => !o)}

@@ -5,6 +5,7 @@ import { ViewToolbar } from "@/components/ViewToolbar";
 import { Avatar, CompanyLogo } from "@/components/Avatar";
 import { NewPersonButton } from "@/components/NewPersonButton";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { CallButton } from "@/components/CallButton";
 import { listPeople, listCompanies, getScoringConfig } from "@/lib/queries";
 import { scoreMany } from "@/lib/scoring";
 import { teamMemberById } from "@/lib/types";
@@ -51,6 +52,9 @@ export default async function PeoplePage() {
               <Th>Email</Th>
               <Th>Last contacted</Th>
               <Th>Owner</Th>
+              <th className="px-3 py-2 w-10">
+                <span className="sr-only">Call</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -123,6 +127,21 @@ export default async function PeoplePage() {
                       </div>
                     )}
                   </Td>
+                  <td className="px-3 py-2.5 text-right">
+                    {p.phone && (
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <CallButton
+                          phone={p.phone}
+                          contact={{
+                            name: `${p.firstName} ${p.lastName}`,
+                            company: company?.name,
+                            href: `/people/${p.id}`,
+                          }}
+                          variant="icon"
+                        />
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
