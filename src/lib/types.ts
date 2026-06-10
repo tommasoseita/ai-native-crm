@@ -9,6 +9,34 @@ export interface AppUser {
   role: UserRole;
   mustChangePassword: boolean;
   createdAt: string;
+  aircallUserId: number | null;
+}
+
+// ── Aircall ──────────────────────────────────────────────────────────────────
+
+export type CallDirection = "inbound" | "outbound";
+export type CallStatus = "done" | "missed" | "voicemail";
+export type RecordingStatus = "none" | "pending" | "stored" | "failed";
+
+export interface Call {
+  id: string;
+  aircallCallId: number;
+  direction: CallDirection;
+  rawDigits: string | null;
+  e164: string | null;
+  startedAt: string;
+  answeredAt: string | null;
+  endedAt: string | null;
+  durationSec: number;
+  status: CallStatus;
+  recordingUrl: string | null;
+  recordingStatus: RecordingStatus;
+  aircallUserId: number | null;
+  sdrId: string | null;
+  personId: string | null;
+  taskId: string | null;
+  note: string | null;
+  createdAt: string;
 }
 
 export type DealStage =

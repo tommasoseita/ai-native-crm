@@ -18,6 +18,7 @@ type UserRow = {
   role: UserRole;
   must_change_password: number;
   created_at: string;
+  aircall_user_id: number | null;
 };
 
 function mapUser(r: UserRow): AppUser {
@@ -28,6 +29,7 @@ function mapUser(r: UserRow): AppUser {
     role: r.role,
     mustChangePassword: r.must_change_password === 1,
     createdAt: r.created_at,
+    aircallUserId: r.aircall_user_id ?? null,
   };
 }
 
@@ -103,7 +105,7 @@ export const getCurrentUser = cache(async (): Promise<AppUser | null> => {
   const sessionId = hashToken(token);
   const r = await db.execute({
     sql: `SELECT u.id, u.email, u.name, u.role, u.must_change_password, u.created_at,
-                 s.expires_at
+                 u.aircall_user_id, s.expires_at
           FROM sessions s INNER JOIN users u ON u.id = s.user_id
           WHERE s.id = ?`,
     args: [sessionId],
@@ -179,7 +181,7 @@ export async function getUserById(
 export async function listUsers(): Promise<AppUser[]> {
   const db = await getDb();
   const r = await db.execute(
-    "SELECT id, email, name, role, must_change_password, created_at FROM users ORDER BY created_at ASC",
+    "SELECT id, email, name, role, must_change_password, created_at, aircall_user_id FROM users ORDER BY created_at ASC",
   );
   return (r.rows as unknown as UserRow[]).map(mapUser);
 }

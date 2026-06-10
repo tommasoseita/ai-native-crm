@@ -166,6 +166,35 @@ const DDL = `
   );
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+  -- Aircall integration
+  CREATE TABLE IF NOT EXISTS calls (
+    id TEXT PRIMARY KEY,
+    aircall_call_id INTEGER NOT NULL UNIQUE,
+    direction TEXT NOT NULL CHECK (direction IN ('inbound','outbound')),
+    raw_digits TEXT,
+    e164 TEXT,
+    started_at TEXT NOT NULL,
+    answered_at TEXT,
+    ended_at TEXT,
+    duration_sec INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'done'
+      CHECK (status IN ('done','missed','voicemail')),
+    recording_url TEXT,
+    recording_status TEXT NOT NULL DEFAULT 'none'
+      CHECK (recording_status IN ('none','pending','stored','failed')),
+    aircall_user_id INTEGER,
+    sdr_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    person_id TEXT REFERENCES people(id) ON DELETE SET NULL,
+    task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+    note TEXT,
+    raw_payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_calls_started ON calls(started_at);
+  CREATE INDEX IF NOT EXISTS idx_calls_person ON calls(person_id, started_at);
+  CREATE INDEX IF NOT EXISTS idx_calls_sdr ON calls(sdr_id, started_at);
+  CREATE INDEX IF NOT EXISTS idx_calls_task ON calls(task_id);
 `;
 
 async function seedIfEmpty(client: Client) {
@@ -273,8 +302,29 @@ async function ensureAdminUser(client: Client) {
   });
 }
 
+/**
+ * SQLite has no `ADD COLUMN IF NOT EXISTS` until 3.35+ and libSQL doesn't
+ * expose it the same way, so we introspect first. Used to evolve the schema
+ * without writing a migration framework.
+ */
+async function addColumnIfMissing(
+  client: Client,
+  table: string,
+  column: string,
+  definition: string,
+) {
+  const r = await client.execute(`PRAGMA table_info(${table})`);
+  const exists = (r.rows as unknown as { name: string }[]).some(
+    (row) => row.name === column,
+  );
+  if (!exists) {
+    await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 async function initialize(client: Client): Promise<Client> {
   await client.executeMultiple(DDL);
+  await addColumnIfMissing(client, "users", "aircall_user_id", "INTEGER");
   await seedIfEmpty(client);
   await ensureAdminUser(client);
   return client;
