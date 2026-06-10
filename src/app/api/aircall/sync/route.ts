@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Aircall polling endpoint, called every 5 minutes by Vercel Cron
- * (see vercel.json). Also callable by an admin from the browser for
- * an immediate refresh.
+ * Aircall polling endpoint. Called by Vercel Cron on the schedule in
+ * vercel.json (daily on Hobby, because Hobby caps cron granularity at
+ * one-per-day; bump to a 5-minute schedule once on Pro). Also callable
+ * by an admin from the browser for an immediate refresh between ticks.
  *
  * Auth: either the Vercel-Cron header (set automatically when the
  * scheduler triggers the route) or an admin session.
