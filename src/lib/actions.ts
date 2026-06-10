@@ -11,6 +11,7 @@ import {
   maybeCompleteEnrollment,
 } from "./cadence";
 import { requireUser } from "./auth";
+import { attributeCallsToPerson } from "./aircall-sync";
 import { getTask } from "./queries";
 import { EXIT_OUTCOMES, type DealStage, type ScoringConfig, type TaskOutcome } from "./types";
 import { today, todayISO } from "./utils";
@@ -92,6 +93,7 @@ export async function createPerson(formData: FormData) {
   const firstName = String(formData.get("firstName") || "").trim();
   const lastName = String(formData.get("lastName") || "").trim();
   if (!email || !firstName) return;
+  const phone = String(formData.get("phone") || "") || null;
   const db = await getDb();
   await db.execute({
     sql: `INSERT INTO people (id, first_name, last_name, email, phone, role, company_id, owner_id, linkedin, last_contacted_at, last_engaged_at, created_at)
@@ -101,7 +103,7 @@ export async function createPerson(formData: FormData) {
       first_name: firstName,
       last_name: lastName,
       email,
-      phone: String(formData.get("phone") || "") || null,
+      phone,
       role: String(formData.get("role") || "") || null,
       company_id: String(formData.get("companyId") || "") || null,
       owner_id: String(formData.get("ownerId") || "") || null,
@@ -111,6 +113,8 @@ export async function createPerson(formData: FormData) {
       created_at: todayISO(),
     },
   });
+  // Backfill: link any prior Aircall calls dialled to this number.
+  await attributeCallsToPerson(id, phone);
   revalidatePath("/people");
   revalidatePath("/");
   const companyId = formData.get("companyId");
@@ -120,6 +124,7 @@ export async function createPerson(formData: FormData) {
 
 export async function updatePerson(id: string, formData: FormData) {
   await requireUser();
+  const phone = String(formData.get("phone") || "") || null;
   const db = await getDb();
   await db.execute({
     sql: `UPDATE people SET
@@ -132,13 +137,16 @@ export async function updatePerson(id: string, formData: FormData) {
       first_name: String(formData.get("firstName") || "").trim(),
       last_name: String(formData.get("lastName") || "").trim(),
       email: String(formData.get("email") || "").trim(),
-      phone: String(formData.get("phone") || "") || null,
+      phone,
       role: String(formData.get("role") || "") || null,
       company_id: String(formData.get("companyId") || "") || null,
       owner_id: String(formData.get("ownerId") || "") || null,
       linkedin: String(formData.get("linkedin") || "") || null,
     },
   });
+  // If the phone was changed (or set for the first time), re-attribute any
+  // historical Aircall calls dialled to that number.
+  await attributeCallsToPerson(id, phone);
   revalidatePath("/people");
   revalidatePath(`/people/${id}`);
   revalidatePath("/companies");

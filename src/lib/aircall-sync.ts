@@ -16,6 +16,7 @@ function basicAuth(): string {
 export type SyncResult = {
   fetched: number;
   inserted: number;
+  rematchedPersons: number;
   recordingsStored: number;
   recordingsFailed: number;
   recordingsPending: number;
@@ -132,6 +133,12 @@ export async function syncRecentCalls(): Promise<SyncResult> {
     page++;
   }
 
+  // Sweep unattributed historical calls: a call inserted before its contact
+  // existed in the CRM still has person_id=NULL. We try to match each one
+  // against the current people table so that creating/updating a phone
+  // number retroactively populates the contact's call history.
+  const rematchedPersons = await rematchUnattributedCalls();
+
   const pendingR = await db.execute(
     "SELECT count(*) AS n FROM calls WHERE recording_status = 'pending'",
   );
@@ -142,6 +149,7 @@ export async function syncRecentCalls(): Promise<SyncResult> {
   return {
     fetched,
     inserted,
+    rematchedPersons,
     recordingsStored,
     recordingsFailed,
     recordingsPending,
@@ -149,6 +157,57 @@ export async function syncRecentCalls(): Promise<SyncResult> {
     windowFrom: new Date(fromMs).toISOString(),
     windowTo: new Date(now).toISOString(),
   };
+}
+
+/**
+ * Walk every call still missing a person_id and try to attach it to a CRM
+ * contact by phone match. Returns how many rows were updated. Cheap on small
+ * tables; if it ever becomes hot we can add an index on the normalised
+ * trailing digits or move to per-person attribution at write time.
+ */
+async function rematchUnattributedCalls(): Promise<number> {
+  const db = await getDb();
+  const r = await db.execute(
+    `SELECT id, raw_digits FROM calls
+     WHERE person_id IS NULL AND raw_digits IS NOT NULL AND raw_digits != ''`,
+  );
+  let matched = 0;
+  for (const row of r.rows as unknown as { id: string; raw_digits: string }[]) {
+    const personId = await findPersonByPhone(row.raw_digits);
+    if (!personId) continue;
+    const u = await db.execute({
+      sql: "UPDATE calls SET person_id = ? WHERE id = ? AND person_id IS NULL",
+      args: [personId, row.id],
+    });
+    if (u.rowsAffected > 0) matched++;
+  }
+  return matched;
+}
+
+/**
+ * Inverse direction: when a contact's phone is created or changed, attach
+ * any unattributed call whose dialled digits now match. Used from
+ * createPerson/updatePerson server actions so the UI reflects the new
+ * attribution immediately, without waiting for the next cron tick.
+ */
+export async function attributeCallsToPerson(
+  personId: string,
+  phone: string | null,
+): Promise<number> {
+  if (!phone) return 0;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return 0;
+  const key = digits.length > 9 ? digits.slice(-9) : digits;
+  const db = await getDb();
+  const r = await db.execute({
+    sql: `UPDATE calls SET person_id = ?
+          WHERE person_id IS NULL
+            AND raw_digits IS NOT NULL
+            AND substr(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(raw_digits, ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''),
+                       -9) = ?`,
+    args: [personId, key],
+  });
+  return r.rowsAffected;
 }
 
 async function upsertCallRow(c: AircallCall): Promise<boolean> {
