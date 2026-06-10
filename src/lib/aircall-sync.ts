@@ -18,6 +18,8 @@ export type SyncResult = {
   inserted: number;
   recordingsStored: number;
   recordingsFailed: number;
+  recordingsPending: number;
+  storageAvailable: boolean;
   windowFrom: string;
   windowTo: string;
 };
@@ -125,11 +127,20 @@ export async function syncRecentCalls(): Promise<SyncResult> {
     page++;
   }
 
+  const pendingR = await db.execute(
+    "SELECT count(*) AS n FROM calls WHERE recording_status = 'pending'",
+  );
+  const recordingsPending = Number(
+    (pendingR.rows[0] as unknown as { n: number } | undefined)?.n ?? 0,
+  );
+
   return {
     fetched,
     inserted,
     recordingsStored,
     recordingsFailed,
+    recordingsPending,
+    storageAvailable: recordingStorageAvailable(),
     windowFrom: new Date(fromMs).toISOString(),
     windowTo: new Date(now).toISOString(),
   };
