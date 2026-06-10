@@ -27,5 +27,8 @@ export async function storeRecordingForCall(
 }
 
 export function recordingStorageAvailable(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+  // Vercel Blob exposes either BLOB_READ_WRITE_TOKEN (legacy direct token)
+  // or BLOB_STORE_ID (newer OIDC integration). Either is enough — the SDK
+  // figures out how to authenticate at request time.
+  return !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 }
