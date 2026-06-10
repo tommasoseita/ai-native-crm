@@ -3,19 +3,18 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 /**
  * Aircall sends an HMAC-SHA1 signature in the `X-Aircall-Signature` header.
- * The secret is the workspace API token (the same one used for Basic Auth).
- *
- * Docs (note: the public webhook tutorial is silent on the exact secret; the
- * widely-deployed convention across community integrations and customer
- * dashboards is the API token — confirm in your dashboard when you create
- * the webhook).
+ * The secret is a per-webhook token shown in the dashboard at install time —
+ * NOT the workspace API token. We store it as `AIRCALL_WEBHOOK_TOKEN`, with a
+ * fallback to `AIRCALL_API_TOKEN` so the smoke tests we wrote before the
+ * dashboard confirmation still work locally.
  */
 export function verifyAircallSignature(
   rawBody: string,
   signature: string | null,
 ): boolean {
   if (!signature) return false;
-  const secret = process.env.AIRCALL_API_TOKEN;
+  const secret =
+    process.env.AIRCALL_WEBHOOK_TOKEN || process.env.AIRCALL_API_TOKEN;
   if (!secret) return false;
   const expected = createHmac("sha1", secret).update(rawBody).digest("hex");
   // Constant-time compare; lengths must match or timingSafeEqual throws.
@@ -23,6 +22,15 @@ export function verifyAircallSignature(
   const b = Buffer.from(signature.trim());
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+/**
+ * Aircall also embeds the same per-webhook token inside the payload as
+ * `payload.token`. Comparing it against our expected value is a cheap
+ * second line of defence if the HMAC ever gets misconfigured.
+ */
+export function expectedPayloadToken(): string | null {
+  return process.env.AIRCALL_WEBHOOK_TOKEN ?? null;
 }
 
 // ── Webhook payload shape ───────────────────────────────────────────────────
