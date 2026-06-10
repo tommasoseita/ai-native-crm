@@ -147,6 +147,25 @@ const DDL = `
     id INTEGER PRIMARY KEY CHECK (id = 1),
     data TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin','user')),
+    password_hash TEXT NOT NULL,
+    must_change_password INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 `;
 
 async function seedIfEmpty(client: Client) {
@@ -215,9 +234,49 @@ async function seedIfEmpty(client: Client) {
   );
 }
 
+/**
+ * Bootstrap the admin account on a fresh database. The CRM is invite-only:
+ * the seeded admin (Tommaso) creates every other account from the admin UI,
+ * so this only ever runs when the users table is empty.
+ */
+async function ensureAdminUser(client: Client) {
+  const r = await client.execute("SELECT count(*) AS n FROM users");
+  const n = Number(r.rows[0]?.n ?? 0);
+  if (n > 0) return;
+
+  let initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!initialPassword) {
+    if (process.env.VERCEL) {
+      throw new Error(
+        "No users exist and ADMIN_INITIAL_PASSWORD is not set. Refusing to seed " +
+          "the admin account with a guessable default on a public deployment. " +
+          "Set ADMIN_INITIAL_PASSWORD in your Vercel project settings for first boot.",
+      );
+    }
+    initialPassword = "admin1234"; // local dev only; forced change at first login
+  }
+
+  const { hashPassword } = await import("./password");
+  const { randomUUID } = await import("node:crypto");
+  // OR IGNORE: two cold lambdas can race this seed; the UNIQUE(email) loser
+  // must not poison its cached init promise with a constraint error.
+  await client.execute({
+    sql: `INSERT OR IGNORE INTO users (id, email, name, role, password_hash, must_change_password, created_at)
+          VALUES (?, ?, ?, 'admin', ?, 1, ?)`,
+    args: [
+      `usr_${randomUUID().slice(0, 8)}`,
+      "tommaso@wibo.app",
+      "Tommaso Seita",
+      await hashPassword(initialPassword),
+      new Date().toISOString(),
+    ],
+  });
+}
+
 async function initialize(client: Client): Promise<Client> {
   await client.executeMultiple(DDL);
   await seedIfEmpty(client);
+  await ensureAdminUser(client);
   return client;
 }
 

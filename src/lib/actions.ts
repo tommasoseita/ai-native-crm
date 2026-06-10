@@ -10,6 +10,7 @@ import {
   generateTasksForEnrollment,
   maybeCompleteEnrollment,
 } from "./cadence";
+import { requireUser } from "./auth";
 import { getTask } from "./queries";
 import { EXIT_OUTCOMES, type DealStage, type ScoringConfig, type TaskOutcome } from "./types";
 import { today, todayISO } from "./utils";
@@ -23,6 +24,7 @@ function newId(prefix: string) {
 // ── Companies ────────────────────────────────────────────────────────────────
 
 export async function createCompany(formData: FormData) {
+  await requireUser();
   const id = newId("c");
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -49,6 +51,7 @@ export async function createCompany(formData: FormData) {
 }
 
 export async function updateCompany(id: string, formData: FormData) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: `UPDATE companies SET
@@ -72,6 +75,7 @@ export async function updateCompany(id: string, formData: FormData) {
 }
 
 export async function deleteCompany(id: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({ sql: "DELETE FROM companies WHERE id = ?", args: [id] });
   revalidatePath("/companies");
@@ -82,6 +86,7 @@ export async function deleteCompany(id: string) {
 // ── People ───────────────────────────────────────────────────────────────────
 
 export async function createPerson(formData: FormData) {
+  await requireUser();
   const id = newId("p");
   const email = String(formData.get("email") || "").trim();
   const firstName = String(formData.get("firstName") || "").trim();
@@ -114,6 +119,7 @@ export async function createPerson(formData: FormData) {
 }
 
 export async function updatePerson(id: string, formData: FormData) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: `UPDATE people SET
@@ -139,6 +145,7 @@ export async function updatePerson(id: string, formData: FormData) {
 }
 
 export async function deletePerson(id: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({ sql: "DELETE FROM people WHERE id = ?", args: [id] });
   revalidatePath("/people");
@@ -149,6 +156,7 @@ export async function deletePerson(id: string) {
 // ── Deals ────────────────────────────────────────────────────────────────────
 
 export async function createDeal(formData: FormData) {
+  await requireUser();
   const id = newId("d");
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -185,6 +193,7 @@ export async function createDeal(formData: FormData) {
 }
 
 export async function updateDeal(id: string, formData: FormData) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: `UPDATE deals SET
@@ -213,6 +222,7 @@ export async function updateDeal(id: string, formData: FormData) {
 }
 
 export async function deleteDeal(id: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({ sql: "DELETE FROM deals WHERE id = ?", args: [id] });
   revalidatePath("/pipeline");
@@ -225,6 +235,7 @@ export async function moveDeal(
   targetStage: DealStage,
   orderedIds: string[],
 ) {
+  await requireUser();
   const db = await getDb();
   await db.batch(
     orderedIds.map((id, i) => {
@@ -248,6 +259,7 @@ export async function moveDeal(
 // ── Deal ↔ Person associations ───────────────────────────────────────────────
 
 export async function addContactToDeal(dealId: string, personId: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: "INSERT OR IGNORE INTO deal_contacts (deal_id, person_id) VALUES (?, ?)",
@@ -258,6 +270,7 @@ export async function addContactToDeal(dealId: string, personId: string) {
 }
 
 export async function removeContactFromDeal(dealId: string, personId: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: "DELETE FROM deal_contacts WHERE deal_id = ? AND person_id = ?",
@@ -270,6 +283,7 @@ export async function removeContactFromDeal(dealId: string, personId: string) {
 // ── Sequences ────────────────────────────────────────────────────────────────
 
 export async function createSequence(formData: FormData) {
+  await requireUser();
   const id = newId("seq");
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -307,6 +321,7 @@ export async function createSequence(formData: FormData) {
 }
 
 export async function updateSequence(id: string, formData: FormData) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: "UPDATE sequences SET name = :name, description = :description WHERE id = :id",
@@ -321,6 +336,7 @@ export async function updateSequence(id: string, formData: FormData) {
 }
 
 export async function deleteSequence(id: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({ sql: "DELETE FROM sequences WHERE id = ?", args: [id] });
   revalidatePath("/sequences");
@@ -330,6 +346,7 @@ export async function deleteSequence(id: string) {
 // ── Enrollments ──────────────────────────────────────────────────────────────
 
 export async function enrollPerson(formData: FormData) {
+  await requireUser();
   const personId = String(formData.get("personId") || "");
   const sequenceId = String(formData.get("sequenceId") || "");
   const sdrId = String(formData.get("sdrId") || "") || (await currentSdrId());
@@ -379,6 +396,7 @@ export async function enrollPerson(formData: FormData) {
 }
 
 export async function exitEnrollment(enrollmentId: string, reason: string) {
+  await requireUser();
   await exitEnrollmentImpl(enrollmentId, reason);
   revalidatePath("/today");
   revalidatePath("/");
@@ -387,6 +405,7 @@ export async function exitEnrollment(enrollmentId: string, reason: string) {
 // ── Tasks ────────────────────────────────────────────────────────────────────
 
 export async function completeTask(taskId: string, outcome: TaskOutcome) {
+  await requireUser();
   const task = await getTask(taskId);
   if (!task) return;
   const completedAt = today().toISOString();
@@ -418,6 +437,7 @@ export async function completeTask(taskId: string, outcome: TaskOutcome) {
 }
 
 export async function skipTask(taskId: string) {
+  await requireUser();
   const task = await getTask(taskId);
   if (!task) return;
   const db = await getDb();
@@ -432,6 +452,7 @@ export async function skipTask(taskId: string) {
 }
 
 export async function rescheduleTask(taskId: string, newDate: string) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: "UPDATE tasks SET due_date = ? WHERE id = ? AND status = 'pending'",
@@ -443,6 +464,7 @@ export async function rescheduleTask(taskId: string, newDate: string) {
 // ── Scoring config ───────────────────────────────────────────────────────────
 
 export async function updateScoringConfig(config: ScoringConfig) {
+  await requireUser();
   const db = await getDb();
   await db.execute({
     sql: "INSERT INTO scoring_config (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
@@ -461,6 +483,7 @@ async function currentSdrId(): Promise<string> {
 }
 
 export async function setViewAs(sdrId: string) {
+  await requireUser();
   const store = await cookies();
   store.set(VIEW_AS_COOKIE, sdrId, { path: "/", httpOnly: false, sameSite: "lax" });
   revalidatePath("/today");

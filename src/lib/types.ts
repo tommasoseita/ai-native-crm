@@ -1,3 +1,16 @@
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export type UserRole = "admin" | "user";
+
+export interface AppUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  mustChangePassword: boolean;
+  createdAt: string;
+}
+
 export type DealStage =
   | "lead"
   | "qualified"

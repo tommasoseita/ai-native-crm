@@ -1,11 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { currentSdrId } from "@/lib/viewAs";
+import { getCurrentUser } from "@/lib/auth";
 import { SYSTEM_PROMPT, TOOLS, executeTool, type ToolContext } from "@/lib/ai-tools";
 import { todayISO } from "@/lib/utils";
 
 const MAX_ITERATIONS = 8;
 
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return new Response(
