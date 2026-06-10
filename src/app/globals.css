@@ -1,30 +1,103 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────
+ * Design tokens
+ * ──────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #0f1115;
-  --muted: #6b7280;
-  --muted-foreground: #4b5563;
-  --border: #e5e7eb;
-  --sidebar: #fafafa;
-  --sidebar-hover: #f0f0f0;
+  /* Surface */
+  --bg: #fbfbfd;
+  --surface: #ffffff;
+  --surface-2: #f7f7f9;
+  --background: var(--bg); /* legacy alias */
+
+  /* Foreground & neutrals */
+  --foreground: #0a0c10;
+  --foreground-soft: #1a1d24;
+  --muted: #7b7f87;
+  --muted-foreground: #4a4d56;
+
+  /* Borders */
+  --border: #ebebef;
+  --border-strong: #d8d9de;
+
+  /* Sidebar */
+  --sidebar: #f7f7f9;
+  --sidebar-hover: #ececf0;
+  --sidebar-active: #e2e2e8;
+
+  /* Brand */
   --accent: #5b5fef;
+  --accent-strong: #4a4ee0;
   --accent-soft: #eef0ff;
+  --accent-softer: #f5f6ff;
+  --accent-ring: rgba(91, 95, 239, 0.22);
+
+  /* Semantic */
+  --success: #10b981;
+  --success-soft: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-soft: #fffbeb;
+  --danger: #ef4444;
+  --danger-soft: #fef2f2;
+
+  /* Elevation — layered, very soft, like macOS panels */
+  --shadow-xs: 0 1px 0 rgba(15, 17, 21, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 17, 21, 0.05), 0 1px 1px rgba(15, 17, 21, 0.03);
+  --shadow-md:
+    0 2px 4px rgba(15, 17, 21, 0.05),
+    0 4px 12px rgba(15, 17, 21, 0.06);
+  --shadow-lg:
+    0 4px 10px rgba(15, 17, 21, 0.06),
+    0 14px 32px rgba(15, 17, 21, 0.12);
+  --shadow-xl:
+    0 8px 16px rgba(15, 17, 21, 0.08),
+    0 24px 56px rgba(15, 17, 21, 0.18);
+  --shadow-focus: 0 0 0 3px var(--accent-ring);
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 280ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.4, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-sidebar: var(--sidebar);
   --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Base
+ * ──────────────────────────────────────────────────────────────────────── */
 
 html,
 body {
@@ -32,12 +105,14 @@ body {
 }
 
 body {
-  background: var(--background);
+  background: var(--bg);
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
     Helvetica, Arial, sans-serif;
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 * {
@@ -46,21 +121,52 @@ body {
 
 ::selection {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
-/* Subtle scrollbars */
+/* Single, consistent focus ring used app-wide for keyboard navigation */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-radius: inherit;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Scrollbars
+ * ──────────────────────────────────────────────────────────────────────── */
+
 .scrollbar-thin::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #e5e7eb;
-  border-radius: 8px;
+  background: transparent;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--dur) var(--ease);
+}
+.scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background: rgba(15, 17, 21, 0.15);
+  background-clip: padding-box;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db;
+  background: rgba(15, 17, 21, 0.25);
+  background-clip: padding-box;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Kbd
+ * ──────────────────────────────────────────────────────────────────────── */
 
 .kbd {
   display: inline-flex;
@@ -71,9 +177,351 @@ body {
   padding: 0 5px;
   font-size: 11px;
   font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
-  color: #6b7280;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  box-shadow: 0 1px 0 #e5e7eb;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Buttons (semantic, app-wide)
+ * Use these classes instead of repeating tailwind strings on every button.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+  will-change: transform;
+}
+
+.btn:disabled,
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn:active,
+.btn-primary:active,
+.btn-secondary:active,
+.btn-ghost:active,
+.btn-danger:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--foreground);
+  color: #fff;
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.btn-primary:hover {
+  background: #000;
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent-strong);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.btn-accent:hover {
+  background: var(--accent-strong);
+  box-shadow:
+    var(--shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.btn-accent:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--foreground-soft);
+  border-color: var(--border);
+  box-shadow: var(--shadow-xs);
+}
+.btn-secondary:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+.btn-ghost:hover {
+  background: var(--sidebar-hover);
+  color: var(--foreground);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.btn-danger:hover {
+  background: #dc2626;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.btn-icon:hover {
+  background: var(--sidebar-hover);
+  color: var(--foreground);
+}
+.btn-icon:active {
+  transform: scale(0.92);
+}
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Form controls
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.input {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--foreground);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+.input::placeholder {
+  color: var(--muted);
+}
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong);
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+.input:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Surface cards used in dashboards and pages */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.card-interactive {
+  cursor: pointer;
+}
+.card-interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Pills / badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 999px;
+  background: var(--sidebar-hover);
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+.pill-soft {
+  padding: 1px 6px;
+  font-size: 10.5px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Keyframes & utilities
+ * ──────────────────────────────────────────────────────────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fade-in        { animation: fade-in var(--dur) var(--ease-out) both; }
+.animate-scale-in       { animation: scale-in var(--dur-slow) var(--ease-out) both; }
+.animate-slide-up       { animation: slide-up var(--dur) var(--ease-out) both; }
+.animate-slide-down     { animation: slide-down var(--dur) var(--ease-out) both; }
+.animate-toast-in       { animation: toast-in var(--dur-slow) var(--ease-spring) both; }
+.animate-pulse-soft     { animation: pulse-soft 1.4s ease-in-out infinite; }
+
+/* Skeleton shimmer for loading states */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Page-mount animation. Applied on each protected route via the (app) layout. */
+.page-enter {
+  animation: slide-up var(--dur-slow) var(--ease-out) both;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Reduced motion
+ * ──────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * View Transitions
+ * Smooth cross-fade on internal navigation when supported.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-old(root) {
+  animation-name: fade-in;
+  animation-direction: reverse;
+}
+::view-transition-new(root) {
+  animation-name: slide-up;
 }

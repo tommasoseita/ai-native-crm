@@ -9,29 +9,26 @@ export function NewSequenceButton() {
   const { open, openDialog, closeDialog } = useDialogState();
   return (
     <>
-      <button
-        onClick={openDialog}
-        className="flex items-center gap-1 rounded-md bg-[var(--foreground)] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-black"
-      >
+      <button onClick={openDialog} className="btn-primary">
         <Plus size={12} />
         <span>New sequence</span>
         <ChevronDown size={11} className="opacity-70" />
       </button>
       <RecordDialog open={open} onClose={closeDialog} title="New sequence">
-        <form action={createSequence} className="grid grid-cols-2 gap-3">
+        <form action={createSequence} className="grid grid-cols-2 gap-3.5">
           <div className="col-span-2">
             <Field label="Name" name="name" required>
               <input
                 name="name"
                 required
                 placeholder="e.g. Cold call cadence"
-                className={inputClass}
+                className="input"
               />
             </Field>
           </div>
           <div className="col-span-2">
             <Field label="Description" name="description">
-              <textarea name="description" rows={2} className={inputClass} />
+              <textarea name="description" rows={2} className="input" />
             </Field>
           </div>
           <div className="col-span-2">
@@ -39,12 +36,12 @@ export function NewSequenceButton() {
               <input
                 name="offsets"
                 defaultValue="0, 2, 5, 9, 14, 20"
-                className={inputClass}
+                className="input"
               />
             </Field>
           </div>
           <Field label="Owner" name="ownerId">
-            <select name="ownerId" defaultValue="u1" className={inputClass}>
+            <select name="ownerId" defaultValue="u1" className="input">
               {TEAM.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -52,18 +49,11 @@ export function NewSequenceButton() {
               ))}
             </select>
           </Field>
-          <div className="col-span-2 flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={closeDialog}
-              className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] hover:bg-[var(--sidebar-hover)]"
-            >
+          <div className="col-span-2 flex justify-end gap-2 pt-1">
+            <button type="button" onClick={closeDialog} className="btn-secondary">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="rounded-md bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-black"
-            >
+            <button type="submit" className="btn-primary">
               Create sequence
             </button>
           </div>

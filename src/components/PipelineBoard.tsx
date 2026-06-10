@@ -156,8 +156,11 @@ export function PipelineBoard({
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
     >
-      <div className="flex-1 overflow-x-auto scrollbar-thin bg-[var(--sidebar)]">
-        <div className="flex h-full gap-3 px-4 py-4 min-w-max">
+      <div
+        className="flex-1 overflow-x-auto scrollbar-thin"
+        style={{ background: "var(--bg)" }}
+      >
+        <div className="page-enter flex h-full gap-3 px-4 py-4 min-w-max">
           {STAGES.map((stage) => (
             <Column
               key={stage.id}
@@ -195,18 +198,28 @@ function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-[280px] shrink-0 flex-col rounded-xl bg-white border ${
-        isOver ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/15" : "border-[var(--border)]"
-      }`}
+      className="flex w-[284px] shrink-0 flex-col rounded-xl"
+      style={{
+        background: "var(--surface)",
+        border: `1px solid ${isOver ? "var(--accent)" : "var(--border)"}`,
+        boxShadow: isOver
+          ? "var(--shadow-md), 0 0 0 3px var(--accent-ring)"
+          : "var(--shadow-xs)",
+        transition:
+          "border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease)",
+      }}
     >
-      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2.5">
-        <span className="h-2 w-2 rounded-full" style={{ background: color }} />
-        <span className="text-[12.5px] font-medium">{label}</span>
-        <span className="text-[11px] text-[var(--muted)]">{deals.length}</span>
-        <span className="ml-auto text-[11px] tabular-nums text-[var(--muted-foreground)]">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border)]">
+        <span
+          className="h-2 w-2 rounded-full shrink-0"
+          style={{ background: color, boxShadow: `0 0 0 3px ${color}1a` }}
+        />
+        <span className="text-[12.5px] font-medium tracking-tight">{label}</span>
+        <span className="pill pill-soft tabular-nums">{deals.length}</span>
+        <span className="ml-auto text-[11.5px] tabular-nums text-[var(--muted-foreground)]">
           {formatCurrency(total)}
         </span>
-        <button className="rounded p-0.5 hover:bg-[var(--sidebar-hover)]">
+        <button className="btn-icon" aria-label="Add deal" style={{ width: 22, height: 22 }}>
           <Plus size={12} className="text-[var(--muted)]" />
         </button>
       </div>
@@ -216,7 +229,10 @@ function Column({
             <SortableDealCard key={d.id} deal={d} lookup={lookup} />
           ))}
           {deals.length === 0 && (
-            <div className="rounded-md border border-dashed border-[var(--border)] px-3 py-6 text-center text-[11px] text-[var(--muted)]">
+            <div
+              className="rounded-lg px-3 py-6 text-center text-[11px] text-[var(--muted)]"
+              style={{ border: "1px dashed var(--border-strong)" }}
+            >
               Drop deals here
             </div>
           )}
@@ -256,11 +272,29 @@ function DealCard({
 
   return (
     <div
-      className={`group select-none rounded-md border bg-white p-2.5 ${
-        dragging
-          ? "border-[var(--accent)] shadow-lg cursor-grabbing"
-          : "border-[var(--border)] hover:border-[var(--accent)]/40 hover:shadow-[0_1px_4px_rgba(0,0,0,0.05)] transition-all cursor-grab"
-      }`}
+      className="group select-none rounded-lg p-2.5"
+      style={{
+        background: "var(--surface)",
+        border: `1px solid ${dragging ? "var(--accent)" : "var(--border)"}`,
+        boxShadow: dragging ? "var(--shadow-lg)" : "var(--shadow-xs)",
+        cursor: dragging ? "grabbing" : "grab",
+        transition:
+          "border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease)",
+      }}
+      onMouseEnter={(e) => {
+        if (!dragging) {
+          e.currentTarget.style.borderColor = "var(--border-strong)";
+          e.currentTarget.style.boxShadow = "var(--shadow-md)";
+          e.currentTarget.style.transform = "translateY(-1px)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!dragging) {
+          e.currentTarget.style.borderColor = "var(--border)";
+          e.currentTarget.style.boxShadow = "var(--shadow-xs)";
+          e.currentTarget.style.transform = "";
+        }
+      }}
     >
       <div className="flex items-start gap-2">
         {company && <CompanyLogo name={company.name} domain={company.domain ?? undefined} />}

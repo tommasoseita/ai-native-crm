@@ -3,7 +3,7 @@ import { TopBar } from "@/components/TopBar";
 import { AIChat } from "@/components/AIChat";
 import { CapacityBadge } from "@/components/CapacityBadge";
 import { CompanyLogo } from "@/components/Avatar";
-import { Home as HomeIcon, CheckSquare } from "lucide-react";
+import { Home as HomeIcon, CheckSquare, ArrowRight } from "lucide-react";
 import {
   listCompanies,
   listDeals,
@@ -50,9 +50,10 @@ export default async function HomePage() {
     <>
       <TopBar title="Home" icon={<HomeIcon size={14} />} />
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="mx-auto max-w-3xl px-6 py-10">
-          <h1 className="mb-6 text-center text-[26px] font-semibold tracking-tight">
-            {greeting()}, {sdr.name.split(" ")[0]}.
+        <div className="page-enter mx-auto max-w-3xl px-6 py-12">
+          <h1 className="mb-8 text-center text-[28px] font-semibold tracking-tight">
+            {greeting()},{" "}
+            <span style={{ color: "var(--accent-strong)" }}>{sdr.name.split(" ")[0]}</span>.
           </h1>
 
           <AIChat />
@@ -62,26 +63,32 @@ export default async function HomePage() {
             right={
               <Link
                 href="/today"
-                className="inline-flex items-center gap-1 text-[12px] text-[var(--muted-foreground)] hover:underline"
+                className="group/cta inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--muted-foreground)] hover:text-[var(--accent-strong)] transition-colors"
               >
-                <CheckSquare size={11} />
+                <CheckSquare size={12} />
                 Open daily queue
+                <ArrowRight
+                  size={11}
+                  className="opacity-0 -translate-x-1 transition-all duration-200 group-hover/cta:opacity-100 group-hover/cta:translate-x-0"
+                />
               </Link>
             }
           >
             <CapacityBadge {...queue.capacity} />
-            <div className="mt-2 text-[12px] text-[var(--muted-foreground)]">
+            <div className="mt-3 text-[12.5px] text-[var(--muted-foreground)] flex items-center gap-3">
               {queue.overdue.length > 0 && (
-                <span className="text-red-600">
-                  {queue.overdue.length} overdue ·{" "}
+                <span className="inline-flex items-center gap-1.5 font-medium text-[var(--danger)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--danger)] animate-pulse-soft" />
+                  {queue.overdue.length} overdue
                 </span>
               )}
-              {queue.dueToday.length} due today · {queue.completedToday.length} completed
+              <span>{queue.dueToday.length} due today</span>
+              <span>{queue.completedToday.length} completed</span>
             </div>
           </Section>
 
-          <div className="mt-10 grid grid-cols-3 gap-3">
-            <Stat label="Pipeline (weighted)" value={formatCurrency(weighted)} />
+          <div className="mt-12 grid grid-cols-3 gap-3">
+            <Stat label="Pipeline (weighted)" value={formatCurrency(weighted)} highlight />
             <Stat label="Companies" value={allCompanies.length.toString()} />
             <Stat label="Contacts" value={allPeople.length.toString()} />
           </div>
@@ -91,20 +98,30 @@ export default async function HomePage() {
             right={
               <Link
                 href="/pipeline"
-                className="text-[12px] text-[var(--muted-foreground)] hover:underline"
+                className="group/cta inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--muted-foreground)] hover:text-[var(--accent-strong)] transition-colors"
               >
                 View all
+                <ArrowRight
+                  size={11}
+                  className="opacity-0 -translate-x-1 transition-all duration-200 group-hover/cta:opacity-100 group-hover/cta:translate-x-0"
+                />
               </Link>
             }
           >
-            <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+            <div
+              className="overflow-hidden rounded-xl bg-[var(--surface)]"
+              style={{
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-xs)",
+              }}
+            >
               {recentDeals.map((d, i) => {
                 const company = recentDealCompanyMap.get(d.id);
                 return (
                   <Link
                     key={d.id}
                     href={`/deals/${d.id}`}
-                    className={`flex items-center gap-3 px-4 py-2.5 text-[13px] hover:bg-[var(--sidebar-hover)] ${
+                    className={`deal-row flex items-center gap-3 px-4 py-3 text-[13px] ${
                       i !== recentDeals.length - 1 ? "border-b border-[var(--border)]" : ""
                     }`}
                   >
@@ -117,10 +134,8 @@ export default async function HomePage() {
                     )}
                     <span className="font-medium truncate">{d.name}</span>
                     <span className="ml-auto flex items-center gap-3 text-[12px] text-[var(--muted-foreground)]">
-                      <span className="rounded-full bg-[var(--sidebar-hover)] px-2 py-0.5 text-[11px]">
-                        {STAGE_LABELS[d.stage]}
-                      </span>
-                      <span className="tabular-nums">
+                      <span className="pill">{STAGE_LABELS[d.stage]}</span>
+                      <span className="tabular-nums font-medium text-[var(--foreground)]">
                         {formatCurrency(d.value, d.currency)}
                       </span>
                       <span>{formatDate(d.expectedCloseDate)}</span>
@@ -136,11 +151,35 @@ export default async function HomePage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-white px-4 py-3">
-      <div className="text-[11px] uppercase tracking-wider text-[var(--muted)]">{label}</div>
-      <div className="mt-1 text-[18px] font-semibold tabular-nums">{value}</div>
+    <div
+      className="stat-card rounded-xl bg-[var(--surface)] px-4 py-3.5"
+      style={{
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-xs)",
+        ...(highlight
+          ? {
+              background:
+                "linear-gradient(180deg, var(--accent-softer) 0%, var(--surface) 70%)",
+            }
+          : {}),
+      }}
+    >
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+        {label}
+      </div>
+      <div className="mt-1.5 text-[20px] font-semibold tabular-nums tracking-tight">
+        {value}
+      </div>
     </div>
   );
 }
@@ -155,9 +194,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-10">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-[13px] font-medium">{title}</h2>
+    <div className="mt-12">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[12.5px] font-semibold tracking-tight uppercase text-[var(--muted)] tracking-[0.06em]">
+          {title}
+        </h2>
         {right}
       </div>
       {children}

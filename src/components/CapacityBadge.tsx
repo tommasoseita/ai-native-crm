@@ -13,23 +13,40 @@ export function CapacityBadge({
   const pendingPct = Math.min(100 - usedPct, (pending / cap) * 100);
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-white px-3 py-2.5">
-      <div className="flex flex-col gap-0.5">
-        <div className="text-[11px] uppercase tracking-wider text-[var(--muted)]">
+    <div
+      className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+      style={{ boxShadow: "var(--shadow-xs)" }}
+    >
+      <div className="flex flex-col gap-0.5 min-w-[78px]">
+        <div className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-[var(--muted)]">
           Capacity
         </div>
-        <div className="text-[18px] font-semibold tabular-nums">
+        <div className="text-[20px] font-semibold tabular-nums leading-none mt-1">
           {used + pending}
           <span className="text-[var(--muted)] font-normal">/{cap}</span>
         </div>
       </div>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--sidebar-hover)]">
+      <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-[var(--sidebar-hover)]">
         <div className="flex h-full">
-          <div className="h-full bg-emerald-500" style={{ width: `${usedPct}%` }} />
-          <div className="h-full bg-amber-400" style={{ width: `${pendingPct}%` }} />
+          <div
+            className="h-full transition-[width] duration-500 ease-out"
+            style={{
+              width: `${usedPct}%`,
+              background:
+                "linear-gradient(90deg, var(--success) 0%, #34d399 100%)",
+            }}
+          />
+          <div
+            className="h-full transition-[width] duration-500 ease-out"
+            style={{
+              width: `${pendingPct}%`,
+              background:
+                "linear-gradient(90deg, var(--warning) 0%, #fbbf24 100%)",
+            }}
+          />
         </div>
       </div>
-      <div className="flex items-center gap-3 text-[11.5px] text-[var(--muted-foreground)]">
+      <div className="flex items-center gap-3.5 text-[11.5px] text-[var(--muted-foreground)]">
         <Stat color="bg-emerald-500" label="Done" value={used} />
         <Stat color="bg-amber-400" label="Pending" value={pending} />
         <Stat color="bg-slate-200" label="Free" value={free} />

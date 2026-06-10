@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { login, type AuthFormState } from "@/lib/auth-actions";
-import { Field, inputClass } from "@/components/RecordDialog";
+import { Field } from "@/components/RecordDialog";
 
 const initialState: AuthFormState = {};
 
@@ -20,7 +21,7 @@ export function LoginForm() {
           required
           autoFocus
           defaultValue={state.email ?? ""}
-          className={inputClass}
+          className="input"
           placeholder="you@company.com"
         />
       </Field>
@@ -31,21 +32,35 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className={inputClass}
+          className="input"
           placeholder="••••••••"
         />
       </Field>
       {state.error && (
-        <p role="alert" className="text-[12.5px] text-red-600">
+        <p
+          role="alert"
+          className="bg-[var(--danger-soft)] border border-red-200/60 text-[var(--danger)] rounded-md px-3 py-2 text-[12.5px]"
+        >
           {state.error}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 rounded-md bg-[var(--accent)] px-3 py-2 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-60"
+        className="btn-accent mt-1 w-full"
+        style={{ height: "40px" }}
       >
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? (
+          <>
+            <Loader2 size={14} className="animate-spin" />
+            Signing in…
+          </>
+        ) : (
+          <>
+            Sign in
+            <ArrowRight size={14} />
+          </>
+        )}
       </button>
     </form>
   );

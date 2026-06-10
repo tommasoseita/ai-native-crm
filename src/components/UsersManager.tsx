@@ -12,7 +12,8 @@ import {
 import type { AppUser, UserRole } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Avatar } from "./Avatar";
-import { Field, RecordDialog, inputClass, useDialogState } from "./RecordDialog";
+import { Field, RecordDialog, useDialogState } from "./RecordDialog";
+import { useToast } from "./Toast";
 
 const initialState: UserFormState = {};
 
@@ -20,14 +21,16 @@ export function AddUserButton() {
   const { open, openDialog, closeDialog } = useDialogState();
   return (
     <>
-      <button
-        onClick={openDialog}
-        className="flex items-center gap-1 rounded-md bg-[var(--foreground)] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-black"
-      >
+      <button onClick={openDialog} className="btn-primary">
         <UserPlus size={12} />
         <span>Add user</span>
       </button>
-      <RecordDialog open={open} onClose={closeDialog} title="Add user">
+      <RecordDialog
+        open={open}
+        onClose={closeDialog}
+        title="Add user"
+        description="They'll set their own password the first time they sign in."
+      >
         <CreateUserForm onDone={closeDialog} />
       </RecordDialog>
     </>
@@ -36,13 +39,17 @@ export function AddUserButton() {
 
 function CreateUserForm({ onDone }: { onDone: () => void }) {
   const [state, formAction, pending] = useActionState(createUser, initialState);
+  const toast = useToast();
 
   useEffect(() => {
-    if (state.ok) onDone();
-  }, [state.ok, onDone]);
+    if (state.ok) {
+      toast.success("User created. They'll set their own password at first sign-in.");
+      onDone();
+    }
+  }, [state.ok, onDone, toast]);
 
   return (
-    <form action={formAction} className="grid grid-cols-2 gap-3">
+    <form action={formAction} className="grid grid-cols-2 gap-3.5">
       <div className="col-span-2">
         <Field label="Name" name="name" required>
           <input
@@ -50,7 +57,7 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
             required
             autoFocus
             placeholder="e.g. Jane Cooper"
-            className={inputClass}
+            className="input"
           />
         </Field>
       </div>
@@ -61,47 +68,38 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
             type="email"
             required
             placeholder="jane@company.com"
-            className={inputClass}
+            className="input"
           />
         </Field>
       </div>
-      <Field label="Temporary password" name="password" required>
+      <Field label="Temporary password" name="password" required hint="Min. 8 characters">
         <input
           name="password"
           type="password"
           required
           minLength={8}
-          placeholder="Min. 8 characters"
-          className={inputClass}
+          className="input"
         />
       </Field>
       <Field label="Role" name="role">
-        <select name="role" defaultValue="user" className={inputClass}>
+        <select name="role" defaultValue="user" className="input">
           <option value="user">User</option>
           <option value="admin">Admin</option>
         </select>
       </Field>
-      <p className="col-span-2 text-[11.5px] text-[var(--muted-foreground)]">
-        The user will be asked to change this password the first time they sign in.
-      </p>
       {state.error && (
-        <p role="alert" className="col-span-2 text-[12.5px] text-red-600">
+        <p
+          role="alert"
+          className="col-span-2 bg-[var(--danger-soft)] border border-red-200/60 text-[var(--danger)] rounded-md px-3 py-2 text-[12.5px]"
+        >
           {state.error}
         </p>
       )}
-      <div className="col-span-2 flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] hover:bg-[var(--sidebar-hover)]"
-        >
+      <div className="col-span-2 flex justify-end gap-2 pt-1">
+        <button type="button" onClick={onDone} className="btn-secondary">
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-black disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className="btn-primary">
           {pending ? "Adding…" : "Add user"}
         </button>
       </div>
@@ -111,15 +109,24 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
 
 function ResetPasswordForm({ user, onDone }: { user: AppUser; onDone: () => void }) {
   const [state, formAction, pending] = useActionState(resetUserPassword, initialState);
+  const toast = useToast();
 
   useEffect(() => {
-    if (state.ok) onDone();
-  }, [state.ok, onDone]);
+    if (state.ok) {
+      toast.success(`Password reset for ${user.name}. They've been signed out.`);
+      onDone();
+    }
+  }, [state.ok, onDone, toast, user.name]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-3.5">
       <input type="hidden" name="userId" value={user.id} />
-      <Field label="New temporary password" name="password" required>
+      <Field
+        label="New temporary password"
+        name="password"
+        required
+        hint={`${user.name} will be signed out everywhere and asked to choose a new password.`}
+      >
         <input
           name="password"
           type="password"
@@ -127,31 +134,22 @@ function ResetPasswordForm({ user, onDone }: { user: AppUser; onDone: () => void
           minLength={8}
           autoFocus
           placeholder="Min. 8 characters"
-          className={inputClass}
+          className="input"
         />
       </Field>
-      <p className="text-[11.5px] text-[var(--muted-foreground)]">
-        {user.name} will be signed out everywhere and asked to choose a new password the
-        next time they sign in.
-      </p>
       {state.error && (
-        <p role="alert" className="text-[12.5px] text-red-600">
+        <p
+          role="alert"
+          className="bg-[var(--danger-soft)] border border-red-200/60 text-[var(--danger)] rounded-md px-3 py-2 text-[12.5px]"
+        >
           {state.error}
         </p>
       )}
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] hover:bg-[var(--sidebar-hover)]"
-        >
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={onDone} className="btn-secondary">
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-black disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className="btn-primary">
           {pending ? "Resetting…" : "Reset password"}
         </button>
       </div>
@@ -171,12 +169,18 @@ export function UsersManager({
     null,
   );
   const [resetUser, setResetUser] = useState<AppUser | null>(null);
+  const toast = useToast();
 
-  const onRoleChange = (userId: string, role: UserRole) => {
+  const onRoleChange = (user: AppUser, role: UserRole) => {
     setRoleError(null);
     startTransition(async () => {
-      const res = await updateUserRole(userId, role);
-      if (res.error) setRoleError({ userId, message: res.error });
+      const res = await updateUserRole(user.id, role);
+      if (res.error) {
+        setRoleError({ userId: user.id, message: res.error });
+        toast.error(res.error);
+      } else {
+        toast.success(`${user.name} is now ${role === "admin" ? "an admin" : "a user"}.`);
+      }
     });
   };
 
@@ -186,21 +190,22 @@ export function UsersManager({
     }
     startTransition(async () => {
       const res = await deleteUser(user.id);
-      if (res.error) alert(res.error);
+      if (res.error) toast.error(res.error);
+      else toast.success(`${user.name} was removed.`);
     });
   };
 
   return (
-    <div className="flex-1 overflow-auto scrollbar-thin bg-white">
+    <div className="page-enter flex-1 overflow-auto scrollbar-thin bg-[var(--surface)]">
       <table className="w-full text-[13px]">
-        <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-white">
-          <tr className="text-left text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">
-            <th className="px-3 py-2 font-medium">User</th>
-            <th className="px-3 py-2 font-medium">Email</th>
-            <th className="px-3 py-2 font-medium">Role</th>
-            <th className="px-3 py-2 font-medium">Password</th>
-            <th className="px-3 py-2 font-medium">Created</th>
-            <th className="px-3 py-2 font-medium">
+        <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)]">
+          <tr className="text-left text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+            <th className="px-4 py-2.5">User</th>
+            <th className="px-3 py-2.5">Email</th>
+            <th className="px-3 py-2.5">Role</th>
+            <th className="px-3 py-2.5">Password</th>
+            <th className="px-3 py-2.5">Created</th>
+            <th className="px-3 py-2.5">
               <span className="sr-only">Actions</span>
             </th>
           </tr>
@@ -211,58 +216,61 @@ export function UsersManager({
             return (
               <tr
                 key={u.id}
-                className="border-b border-[var(--border)] hover:bg-[var(--sidebar-hover)]"
+                className="border-b border-[var(--border)] transition-colors duration-150 hover:bg-[var(--sidebar)]"
               >
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <Avatar name={u.name} size="xs" />
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={u.name} size="sm" />
                     <span className="font-medium">{u.name}</span>
-                    {isSelf && (
-                      <span className="rounded-full bg-[var(--sidebar-hover)] px-1.5 py-0.5 text-[11px] text-[var(--muted-foreground)]">
-                        You
-                      </span>
-                    )}
+                    {isSelf && <span className="pill pill-soft">You</span>}
                   </div>
                 </td>
-                <td className="px-3 py-2.5 text-[var(--muted-foreground)]">{u.email}</td>
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-3 text-[var(--muted-foreground)]">{u.email}</td>
+                <td className="px-3 py-3">
                   <select
                     key={`${u.id}:${u.role}`}
                     defaultValue={u.role}
                     disabled={isSelf || pending}
                     title={isSelf ? "You cannot change your own role" : undefined}
-                    onChange={(e) => onRoleChange(u.id, e.target.value as UserRole)}
-                    className="rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] outline-none focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                    onChange={(e) => onRoleChange(u, e.target.value as UserRole)}
+                    className="input"
+                    style={{ width: "auto", padding: "5px 8px", fontSize: "12.5px" }}
                   >
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                   </select>
                   {roleError?.userId === u.id && (
-                    <div role="alert" className="mt-1 text-[11.5px] text-red-600">
+                    <div role="alert" className="mt-1 text-[11.5px] text-[var(--danger)]">
                       {roleError.message}
                     </div>
                   )}
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-3">
                   {u.mustChangePassword ? (
-                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                    <span
+                      className="pill"
+                      style={{
+                        background: "var(--warning-soft)",
+                        color: "#92400e",
+                      }}
+                    >
                       Must change password
                     </span>
                   ) : (
                     <span className="text-[var(--muted)]">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-[var(--muted-foreground)]">
+                <td className="px-3 py-3 text-[var(--muted-foreground)]">
                   {formatDate(u.createdAt)}
                 </td>
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-3">
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
                       onClick={() => setResetUser(u)}
                       title="Reset password"
                       aria-label="Reset password"
-                      className="rounded p-1 text-[var(--muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--foreground)]"
+                      className="btn-icon"
                     >
                       <KeyRound size={13} />
                     </button>
@@ -272,7 +280,20 @@ export function UsersManager({
                       disabled={isSelf || pending}
                       title={isSelf ? "You cannot delete your own account" : "Delete user"}
                       aria-label="Delete user"
-                      className="rounded p-1 text-[var(--muted)] enabled:hover:bg-red-50 enabled:hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="btn-icon"
+                      style={{
+                        color: isSelf ? "var(--muted)" : "var(--muted)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelf && !pending) {
+                          e.currentTarget.style.background = "var(--danger-soft)";
+                          e.currentTarget.style.color = "var(--danger)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "";
+                        e.currentTarget.style.color = "var(--muted)";
+                      }}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -287,6 +308,7 @@ export function UsersManager({
         open={resetUser !== null}
         onClose={() => setResetUser(null)}
         title={resetUser ? `Reset password for ${resetUser.name}` : "Reset password"}
+        description="They'll be signed out everywhere and prompted to choose a new password."
       >
         {resetUser && (
           <ResetPasswordForm

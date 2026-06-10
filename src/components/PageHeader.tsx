@@ -14,30 +14,47 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="border-b border-[var(--border)] bg-white px-6 pt-5 pb-3">
+    <div
+      className="px-6 pt-6 pb-5"
+      style={{
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
+      }}
+    >
       <div className="flex items-start gap-3">
         {icon && (
-          <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-md bg-[var(--accent-soft)]">
+          <div
+            className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg text-[var(--accent)]"
+            style={{
+              background: "var(--accent-soft)",
+              boxShadow: "inset 0 0 0 1px var(--accent-ring)",
+            }}
+          >
             {icon}
           </div>
         )}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-[18px] font-semibold tracking-tight">{title}</h1>
+            <h1 className="text-[19px] font-semibold tracking-tight text-[var(--foreground)]">
+              {title}
+            </h1>
             {typeof count === "number" && (
-              <span className="rounded-full bg-[var(--sidebar-hover)] px-1.5 py-0.5 text-[11px] text-[var(--muted-foreground)]">
+              <span
+                className="pill"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
                 {count}
               </span>
             )}
           </div>
           {description && (
-            <p className="mt-0.5 text-[12.5px] text-[var(--muted-foreground)]">
+            <p className="mt-1 text-[13px] text-[var(--muted-foreground)]">
               {description}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <button className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-white px-2.5 py-1.5 text-[12px] text-[var(--muted-foreground)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--foreground)]">
+        <div className="flex items-center gap-2">
+          <button type="button" className="btn-secondary">
             <Sparkles size={12} className="text-[var(--accent)]" />
             <span>Ask AI</span>
           </button>

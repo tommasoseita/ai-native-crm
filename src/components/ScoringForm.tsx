@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { Save, Plus, X } from "lucide-react";
 import { updateScoringConfig } from "@/lib/actions";
 import type { ScoringConfig } from "@/lib/types";
-import { inputClass } from "./RecordDialog";
 
 export function ScoringForm({ initial }: { initial: ScoringConfig }) {
   const [config, setConfig] = useState<ScoringConfig>(initial);
@@ -49,7 +48,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
           title="Intent"
           description="Bonus if last_engaged_at is within the recent window."
         />
-        <div className="grid grid-cols-2 gap-3 px-4 py-3">
+        <div className="grid grid-cols-2 gap-3.5 px-4 py-3">
           <label className="flex flex-col gap-1 text-[12px]">
             <span className="text-[var(--muted-foreground)]">Recent window (days)</span>
             <input
@@ -62,7 +61,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
                   intent: { ...config.intent, recentEngagedDays: Number(e.target.value) },
                 })
               }
-              className={inputClass}
+              className="input"
             />
           </label>
           <label className="flex flex-col gap-1 text-[12px]">
@@ -76,7 +75,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
                   intent: { ...config.intent, weight: Number(e.target.value) },
                 })
               }
-              className={inputClass}
+              className="input"
             />
           </label>
         </div>
@@ -87,7 +86,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
           title="Tier thresholds"
           description="A and B minimum scores. Below B is tier C."
         />
-        <div className="grid grid-cols-2 gap-3 px-4 py-3">
+        <div className="grid grid-cols-2 gap-3.5 px-4 py-3">
           <label className="flex flex-col gap-1 text-[12px]">
             <span className="text-[var(--muted-foreground)]">Tier A (min score)</span>
             <input
@@ -99,7 +98,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
                   tiers: { ...config.tiers, A: Number(e.target.value) },
                 })
               }
-              className={inputClass}
+              className="input"
             />
           </label>
           <label className="flex flex-col gap-1 text-[12px]">
@@ -113,7 +112,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
                   tiers: { ...config.tiers, B: Number(e.target.value) },
                 })
               }
-              className={inputClass}
+              className="input"
             />
           </label>
         </div>
@@ -121,11 +120,7 @@ export function ScoringForm({ initial }: { initial: ScoringConfig }) {
 
       <div className="sticky bottom-0 -mx-6 -mb-5 mt-6 flex items-center justify-end gap-3 border-t border-[var(--border)] bg-white px-6 py-3">
         {saved && <span className="text-[12px] text-emerald-600">Saved</span>}
-        <button
-          onClick={onSave}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-[var(--foreground)] px-3 py-1.5 text-[12.5px] font-medium text-white hover:bg-black disabled:opacity-50"
-        >
+        <button onClick={onSave} disabled={pending} className="btn-primary">
           <Save size={12} />
           Save scoring rules
         </button>
@@ -186,13 +181,9 @@ function WeightTable({
               type="number"
               value={v}
               onChange={(e) => update(k, Number(e.target.value))}
-              className="w-20 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] tabular-nums text-right outline-none focus:border-[var(--accent)]"
+              className="input w-20 tabular-nums text-right"
             />
-            <button
-              onClick={() => remove(k)}
-              className="rounded p-1 text-[var(--muted)] hover:bg-red-50 hover:text-red-600"
-              aria-label="Remove"
-            >
+            <button onClick={() => remove(k)} className="btn-icon" aria-label="Remove">
               <X size={12} />
             </button>
           </li>
@@ -203,19 +194,15 @@ function WeightTable({
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
           placeholder="Add new..."
-          className="flex-1 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] outline-none focus:border-[var(--accent)]"
+          className="input flex-1"
         />
         <input
           type="number"
           value={newWeight}
           onChange={(e) => setNewWeight(Number(e.target.value))}
-          className="w-20 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] tabular-nums text-right outline-none focus:border-[var(--accent)]"
+          className="input w-20 tabular-nums text-right"
         />
-        <button
-          onClick={add}
-          className="rounded-md border border-[var(--border)] bg-white p-1 text-[var(--muted-foreground)] hover:bg-[var(--sidebar-hover)]"
-          aria-label="Add"
-        >
+        <button onClick={add} className="btn-icon" aria-label="Add">
           <Plus size={12} />
         </button>
       </div>
@@ -263,19 +250,15 @@ function RolePatternsTable({
             <input
               value={p.pattern}
               onChange={(e) => update(i, { pattern: e.target.value })}
-              className="flex-1 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] outline-none focus:border-[var(--accent)] font-mono"
+              className="input flex-1 font-mono"
             />
             <input
               type="number"
               value={p.weight}
               onChange={(e) => update(i, { weight: Number(e.target.value) })}
-              className="w-20 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] tabular-nums text-right outline-none focus:border-[var(--accent)]"
+              className="input w-20 tabular-nums text-right"
             />
-            <button
-              onClick={() => remove(i)}
-              className="rounded p-1 text-[var(--muted)] hover:bg-red-50 hover:text-red-600"
-              aria-label="Remove"
-            >
+            <button onClick={() => remove(i)} className="btn-icon" aria-label="Remove">
               <X size={12} />
             </button>
           </li>
@@ -286,19 +269,15 @@ function RolePatternsTable({
           value={newPattern}
           onChange={(e) => setNewPattern(e.target.value)}
           placeholder="e.g. VP|Head of"
-          className="flex-1 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] outline-none focus:border-[var(--accent)] font-mono"
+          className="input flex-1 font-mono"
         />
         <input
           type="number"
           value={newWeight}
           onChange={(e) => setNewWeight(Number(e.target.value))}
-          className="w-20 rounded-md border border-[var(--border)] bg-white px-2 py-1 text-[12.5px] tabular-nums text-right outline-none focus:border-[var(--accent)]"
+          className="input w-20 tabular-nums text-right"
         />
-        <button
-          onClick={add}
-          className="rounded-md border border-[var(--border)] bg-white p-1 text-[var(--muted-foreground)] hover:bg-[var(--sidebar-hover)]"
-          aria-label="Add"
-        >
+        <button onClick={add} className="btn-icon" aria-label="Add">
           <Plus size={12} />
         </button>
       </div>

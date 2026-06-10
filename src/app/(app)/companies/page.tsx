@@ -37,7 +37,7 @@ export default async function CompaniesPage() {
         action={<NewCompanyButton />}
       />
       <ViewToolbar views={["table", "board"]} activeView="table" />
-      <div className="flex-1 overflow-auto scrollbar-thin bg-white">
+      <div className="page-enter flex-1 overflow-auto scrollbar-thin bg-[var(--surface)]">
         <table className="w-full text-[13px]">
           <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-white">
             <tr className="text-left text-[11px] font-medium uppercase tracking-wider text-[var(--muted)]">

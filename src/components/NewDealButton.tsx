@@ -3,7 +3,7 @@
 import { ChevronDown, Plus } from "lucide-react";
 import { createDeal } from "@/lib/actions";
 import { STAGES, TEAM, type Company, type Person } from "@/lib/types";
-import { Field, RecordDialog, inputClass, useDialogState } from "./RecordDialog";
+import { Field, RecordDialog, useDialogState } from "./RecordDialog";
 
 export function NewDealButton({
   companies,
@@ -21,37 +21,39 @@ export function NewDealButton({
   const { open, openDialog, closeDialog } = useDialogState();
   return (
     <>
-      <button
-        onClick={openDialog}
-        className="flex items-center gap-1 rounded-md bg-[var(--foreground)] px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-black"
-      >
+      <button onClick={openDialog} className="btn-primary">
         <Plus size={12} />
         <span>{label}</span>
         <ChevronDown size={11} className="opacity-70" />
       </button>
-      <RecordDialog open={open} onClose={closeDialog} title="New deal">
-        <form action={createDeal} className="grid grid-cols-2 gap-3">
+      <RecordDialog
+        open={open}
+        onClose={closeDialog}
+        title="New deal"
+        description="Add a deal to your pipeline."
+      >
+        <form action={createDeal} className="grid grid-cols-2 gap-3.5">
           <div className="col-span-2">
             <Field label="Name" name="name" required>
               <input
                 name="name"
                 required
                 placeholder="e.g. Acme — Annual contract"
-                className={inputClass}
+                className="input"
               />
             </Field>
           </div>
           <Field label="Value" name="value">
-            <input name="value" type="number" defaultValue={0} className={inputClass} />
+            <input name="value" type="number" defaultValue={0} className="input" />
           </Field>
           <Field label="Currency" name="currency">
-            <select name="currency" defaultValue="EUR" className={inputClass}>
+            <select name="currency" defaultValue="EUR" className="input">
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
             </select>
           </Field>
           <Field label="Stage" name="stage">
-            <select name="stage" defaultValue="lead" className={inputClass}>
+            <select name="stage" defaultValue="lead" className="input">
               {STAGES.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label}
@@ -66,14 +68,14 @@ export function NewDealButton({
               min={0}
               max={100}
               defaultValue={20}
-              className={inputClass}
+              className="input"
             />
           </Field>
           <Field label="Company" name="companyId">
             <select
               name="companyId"
               defaultValue={defaultCompanyId ?? ""}
-              className={inputClass}
+              className="input"
             >
               <option value="">No company</option>
               {companies.map((c) => (
@@ -87,7 +89,7 @@ export function NewDealButton({
             <select
               name="primaryContactId"
               defaultValue={defaultContactId ?? ""}
-              className={inputClass}
+              className="input"
             >
               <option value="">No contact</option>
               {people.map((p) => (
@@ -98,10 +100,10 @@ export function NewDealButton({
             </select>
           </Field>
           <Field label="Expected close" name="expectedCloseDate">
-            <input name="expectedCloseDate" type="date" className={inputClass} />
+            <input name="expectedCloseDate" type="date" className="input" />
           </Field>
           <Field label="Owner" name="ownerId">
-            <select name="ownerId" defaultValue="u1" className={inputClass}>
+            <select name="ownerId" defaultValue="u1" className="input">
               {TEAM.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -109,18 +111,11 @@ export function NewDealButton({
               ))}
             </select>
           </Field>
-          <div className="col-span-2 flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={closeDialog}
-              className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] hover:bg-[var(--sidebar-hover)]"
-            >
+          <div className="col-span-2 flex justify-end gap-2 pt-1">
+            <button type="button" onClick={closeDialog} className="btn-secondary">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="rounded-md bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-black"
-            >
+            <button type="submit" className="btn-primary">
               Create deal
             </button>
           </div>
