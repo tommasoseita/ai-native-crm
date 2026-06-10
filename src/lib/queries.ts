@@ -2,11 +2,15 @@ import "server-only";
 import { getDb } from "./db";
 import {
   DEFAULT_SCORING_CONFIG,
+  type Call,
+  type CallDirection,
+  type CallStatus,
   type Company,
   type Deal,
   type DealStage,
   type Enrollment,
   type Person,
+  type RecordingStatus,
   type ScoringConfig,
   type Sequence,
   type SequenceStep,
@@ -396,6 +400,65 @@ export async function getTask(id: string): Promise<Task | undefined> {
   });
   const row = r.rows[0] as unknown as TaskRow | undefined;
   return row ? mapTask(row) : undefined;
+}
+
+// ── Calls (Aircall) ─────────────────────────────────────────────────────────
+
+type CallRow = {
+  id: string;
+  aircall_call_id: number;
+  direction: CallDirection;
+  raw_digits: string | null;
+  e164: string | null;
+  started_at: string;
+  answered_at: string | null;
+  ended_at: string | null;
+  duration_sec: number;
+  status: CallStatus;
+  recording_url: string | null;
+  recording_status: RecordingStatus;
+  aircall_user_id: number | null;
+  sdr_id: string | null;
+  person_id: string | null;
+  task_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+function mapCall(r: CallRow): Call {
+  return {
+    id: r.id,
+    aircallCallId: r.aircall_call_id,
+    direction: r.direction,
+    rawDigits: r.raw_digits,
+    e164: r.e164,
+    startedAt: r.started_at,
+    answeredAt: r.answered_at,
+    endedAt: r.ended_at,
+    durationSec: r.duration_sec,
+    status: r.status,
+    recordingUrl: r.recording_url,
+    recordingStatus: r.recording_status,
+    aircallUserId: r.aircall_user_id,
+    sdrId: r.sdr_id,
+    personId: r.person_id,
+    taskId: r.task_id,
+    note: r.note,
+    createdAt: r.created_at,
+  };
+}
+
+export async function callsForPerson(personId: string): Promise<Call[]> {
+  const db = await getDb();
+  const r = await db.execute({
+    sql: `SELECT id, aircall_call_id, direction, raw_digits, e164, started_at,
+                 answered_at, ended_at, duration_sec, status, recording_url,
+                 recording_status, aircall_user_id, sdr_id, person_id, task_id,
+                 note, created_at
+          FROM calls WHERE person_id = ? ORDER BY started_at DESC LIMIT 100`,
+    args: [personId],
+  });
+  return (r.rows as unknown as CallRow[]).map(mapCall);
 }
 
 // ── Scoring config ──────────────────────────────────────────────────────────

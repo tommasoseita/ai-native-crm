@@ -14,7 +14,10 @@ import {
   getSequence,
   listSequences,
   getScoringConfig,
+  callsForPerson,
 } from "@/lib/queries";
+import { listUsers } from "@/lib/auth";
+import { CallList } from "@/components/CallList";
 import { scorePerson } from "@/lib/scoring";
 import { teamMemberById } from "@/lib/types";
 import { Avatar, CompanyLogo } from "@/components/Avatar";
@@ -46,6 +49,8 @@ export default async function PersonDetailPage({
     sequences,
     config,
     activeEnr,
+    calls,
+    crmUsers,
   ] = await Promise.all([
     person.companyId ? getCompany(person.companyId) : Promise.resolve(undefined),
     dealsByPrimaryContact(id),
@@ -55,7 +60,14 @@ export default async function PersonDetailPage({
     listSequences(),
     getScoringConfig(),
     activeEnrollmentForPerson(id),
+    callsForPerson(id),
+    listUsers(),
   ]);
+  const userById = new Map(crmUsers.map((u) => [u.id, u]));
+  const callsWithSdr = calls.map((c) => ({
+    ...c,
+    sdr: c.sdrId ? userById.get(c.sdrId) : undefined,
+  }));
   const owner = teamMemberById(person.ownerId);
   const associatedDeals = associatedDealsRaw.filter(
     (d) => !primaryDeals.some((pd) => pd.id === d.id),
@@ -354,6 +366,10 @@ export default async function PersonDetailPage({
                   })}
                 </ul>
               )}
+            </Panel>
+
+            <Panel title="Calls" count={callsWithSdr.length}>
+              <CallList calls={callsWithSdr} />
             </Panel>
           </div>
         </div>

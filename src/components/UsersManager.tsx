@@ -5,10 +5,12 @@ import { KeyRound, Trash2, UserPlus } from "lucide-react";
 import {
   createUser,
   deleteUser,
+  linkAircallUser,
   resetUserPassword,
   updateUserRole,
   type UserFormState,
 } from "@/lib/user-actions";
+import type { AircallUser } from "@/lib/aircall";
 import type { AppUser, UserRole } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Avatar } from "./Avatar";
@@ -160,9 +162,13 @@ function ResetPasswordForm({ user, onDone }: { user: AppUser; onDone: () => void
 export function UsersManager({
   users,
   currentUserId,
+  aircallUsers,
+  aircallError,
 }: {
   users: AppUser[];
   currentUserId: string;
+  aircallUsers: AircallUser[];
+  aircallError: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [roleError, setRoleError] = useState<{ userId: string; message: string } | null>(
@@ -184,6 +190,30 @@ export function UsersManager({
     });
   };
 
+  const onLinkAircall = (user: AppUser, aircallUserId: number | null) => {
+    startTransition(async () => {
+      const res = await linkAircallUser(user.id, aircallUserId);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      const target = aircallUserId
+        ? aircallUsers.find((a) => a.id === aircallUserId)?.name
+        : null;
+      toast.success(
+        target ? `Linked ${user.name} to ${target} on Aircall.` : `Unlinked ${user.name} from Aircall.`,
+      );
+    });
+  };
+
+  // Build a quick lookup so each row knows which CRM user (if any) already
+  // owns the dropdown's Aircall id, so we can dim those entries to nudge
+  // the admin away from duplicate links.
+  const aircallTakenBy = new Map<number, AppUser>();
+  for (const u of users) {
+    if (u.aircallUserId !== null) aircallTakenBy.set(u.aircallUserId, u);
+  }
+
   const onDelete = (user: AppUser) => {
     if (!confirm(`Delete ${user.name}? They will lose access immediately. This cannot be undone.`)) {
       return;
@@ -203,6 +233,7 @@ export function UsersManager({
             <th className="px-4 py-2.5">User</th>
             <th className="px-3 py-2.5">Email</th>
             <th className="px-3 py-2.5">Role</th>
+            <th className="px-3 py-2.5">Aircall</th>
             <th className="px-3 py-2.5">Password</th>
             <th className="px-3 py-2.5">Created</th>
             <th className="px-3 py-2.5">
@@ -243,6 +274,42 @@ export function UsersManager({
                     <div role="alert" className="mt-1 text-[11.5px] text-[var(--danger)]">
                       {roleError.message}
                     </div>
+                  )}
+                </td>
+                <td className="px-3 py-3">
+                  {aircallError ? (
+                    <span
+                      className="text-[11.5px] text-[var(--muted)]"
+                      title={aircallError}
+                    >
+                      Unavailable
+                    </span>
+                  ) : (
+                    <select
+                      key={`${u.id}:${u.aircallUserId ?? "none"}`}
+                      defaultValue={u.aircallUserId !== null ? String(u.aircallUserId) : ""}
+                      disabled={pending}
+                      onChange={(e) =>
+                        onLinkAircall(
+                          u,
+                          e.target.value ? Number(e.target.value) : null,
+                        )
+                      }
+                      className="input"
+                      style={{ width: "auto", padding: "5px 8px", fontSize: "12.5px", minWidth: 150 }}
+                    >
+                      <option value="">— Not linked —</option>
+                      {aircallUsers.map((a) => {
+                        const takenBy = aircallTakenBy.get(a.id);
+                        const takenByOther = takenBy && takenBy.id !== u.id;
+                        return (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                            {takenByOther ? ` (currently ${takenBy.name})` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
                   )}
                 </td>
                 <td className="px-3 py-3">
