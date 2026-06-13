@@ -135,18 +135,28 @@ export function AircallDialerProvider({ children }: { children: ReactNode }) {
     // staying in the loading state forever when nobody logs in.
     const t = window.setTimeout(() => setIsReady(true), 1500);
 
-    ws.on("incoming_call", async (payload) => {
+    ws.on("incoming_call", (payload) => {
       const phoneNumber = String(payload.from ?? payload.to ?? "");
-      const contact = await lookupContact(phoneNumber);
+      // Pop the panel IMMEDIATELY so the SDR sees Aircall's ringing UI
+      // without waiting on our CRM lookup. Enrich the banner with the
+      // contact's identity as soon as the lookup resolves.
       setActiveCall({
         direction: "inbound",
         phoneNumber,
-        contact: contact ?? undefined,
+        contact: undefined,
         startedAt: Date.now(),
       });
       setIsOpen(true);
-      const label = contact?.name ?? phoneNumber;
-      toast.show("info", `📞 Incoming call from ${label}`);
+      toast.show("info", `📞 Incoming call from ${phoneNumber}`);
+
+      void lookupContact(phoneNumber).then((contact) => {
+        if (!contact) return;
+        // Guard against a stale lookup overwriting a newer call.
+        setActiveCall((prev) =>
+          prev && prev.phoneNumber === phoneNumber ? { ...prev, contact } : prev,
+        );
+        toast.show("info", `📞 ${contact.name} is calling`);
+      });
     });
 
     ws.on("outgoing_call", (payload) => {
@@ -411,17 +421,21 @@ function DialerUI({
             </div>
           )}
 
-          {/* Aircall workspace iframe mount point */}
+          {/* Aircall workspace iframe mount point.
+              The SDK injects `<iframe>` here via innerHTML, bypassing React.
+              The mount div MUST have no React-managed children, otherwise a
+              re-render could reconcile them back and wipe the iframe (which
+              would silently log the SDR out of Aircall). The loader sits
+              behind as a sibling; the iframe paints over it once loaded. */}
           <div
-            id={WORKSPACE_DOM_ID}
+            className="relative"
             style={{ width: 376, height: 666, background: "#fff" }}
           >
-            {/* The SDK injects an <iframe> here at mount time; this empty
-                state is what users see for the ~500ms while it loads. */}
-            <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-[var(--muted)] text-[12px]">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[var(--muted)] text-[12px] pointer-events-none">
               <Loader2 size={16} className="animate-spin" />
               Loading Aircall…
             </div>
+            <div id={WORKSPACE_DOM_ID} className="relative h-full w-full" />
           </div>
         </div>
       </div>
